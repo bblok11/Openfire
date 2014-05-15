@@ -1,4 +1,4 @@
-package com.festcube.openfire.plugin.roomhistory.handler;
+package com.festcube.openfire.plugin.roomhistory.handlers;
 
 import java.util.ArrayList;
 
@@ -12,8 +12,8 @@ import org.xmpp.packet.IQ;
 import org.xmpp.packet.JID;
 
 import com.festcube.openfire.plugin.roomhistory.ArchiveManager;
-import com.festcube.openfire.plugin.roomhistory.ArchivedMessage;
 import com.festcube.openfire.plugin.roomhistory.MUCHelper;
+import com.festcube.openfire.plugin.roomhistory.models.ArchivedMessage;
 import com.festcube.openfire.plugin.roomhistory.xep0059.XmppResultSet;
 
 public class IQFetchHandler extends IQHandler {
@@ -81,9 +81,12 @@ public class IQFetchHandler extends IQHandler {
 			ArchivedMessage lastMessage = messages.get(messages.size() - 1);
 			
 			resultSet.setFirst(XMPPDateTimeFormat.format(firstMessage.getSentDate()));
-			resultSet.setFirstIndex(0);
 			resultSet.setLast(XMPPDateTimeFormat.format(lastMessage.getSentDate()));
 			resultSet.setCount(archiveManager.getArchivedMessagesCount(roomJid));
+			
+			if(archiveManager.isFirstMessageInRoom(firstMessage, roomJid)){
+				resultSet.setFirstIndex((long)0);
+			}
 			
 			responseEl.add(resultSet.createResultElement());
 		}

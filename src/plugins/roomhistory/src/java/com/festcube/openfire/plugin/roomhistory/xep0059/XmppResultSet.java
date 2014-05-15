@@ -11,12 +11,12 @@ public class XmppResultSet
     public static String NAMESPACE = "http://jabber.org/protocol/rsm";
     private String after;
     private String before;
-    private Integer index;
-    private Integer max;
+    private Long index;
+    private Long max;
     private String first;
-    private Integer firstIndex;
+    private Long firstIndex;
     private String last;
-    private Integer count;
+    private Long count;
 
     public XmppResultSet(Element setElement)
     {
@@ -46,7 +46,7 @@ public class XmppResultSet
         {
             try
             {
-                max = Integer.parseInt(setElement.elementText("max"));
+                max = Long.parseLong(setElement.elementText("max"));
                 if (max < 0)
                 {
                     max = null;
@@ -61,7 +61,7 @@ public class XmppResultSet
         {
             try
             {
-                index = Integer.parseInt(setElement.elementText("index"));
+                index = Long.parseLong(setElement.elementText("index"));
                 if (index < 0)
                 {
                     index = null;
@@ -89,7 +89,7 @@ public class XmppResultSet
      *
      * @return the index of the first element to return.
      */
-    public Integer getIndex()
+    public Long getIndex()
     {
         return index;
     }
@@ -99,7 +99,7 @@ public class XmppResultSet
      *
      * @return the maximum number of items to return.
      */
-    public Integer getMax()
+    public Long getMax()
     {
         return max;
     }
@@ -119,7 +119,7 @@ public class XmppResultSet
      *
      * @param firstIndex the index of the first element returned.
      */
-    public void setFirstIndex(Integer firstIndex)
+    public void setFirstIndex(Long firstIndex)
     {
         this.firstIndex = firstIndex;
     }
@@ -139,7 +139,7 @@ public class XmppResultSet
      *
      * @param count the number of elements returned.
      */
-    public void setCount(Integer count)
+    public void setCount(Long count)
     {
         this.count = count;
     }

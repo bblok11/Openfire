@@ -10,7 +10,7 @@ import org.jivesoftware.openfire.muc.MUCEventDispatcher;
 import org.jivesoftware.util.TaskEngine;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 
-import com.festcube.openfire.plugin.roomhistory.handler.IQFetchHandler;
+import com.festcube.openfire.plugin.roomhistory.handlers.IQFetchHandler;
 
 public class RoomHistoryPlugin implements Plugin {
 
