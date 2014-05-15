@@ -1,4 +1,4 @@
-package com.festcube.openfire.plugin.roomhistory;
+package com.festcube.openfire.plugin.roomhistory.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,7 +11,8 @@ import org.xmpp.packet.JID;
 
 public class ArchivedMessage 
 {
-    private JID fromJID;
+    private Long id;
+	private JID fromJID;
     private JID roomJID;
     private Date sentDate;
     private String body;
@@ -36,6 +37,7 @@ public class ArchivedMessage
     	
     	XMPPServerInfo serverInfo = XMPPServer.getInstance().getServerInfo();
     	
+    	this.id = rs.getLong("id");
     	this.fromJID = new JID(rs.getString("nick"), serverInfo.getXMPPDomain(), null);
     	this.roomJID = new JID(rs.getString("roomJID"));
     	this.sentDate = new Date(rs.getLong("sentDate"));
@@ -77,5 +79,9 @@ public class ArchivedMessage
      */
     public String getBody() {
         return body;
+    }
+    
+    public Long getId(){
+    	return id;
     }
 }
