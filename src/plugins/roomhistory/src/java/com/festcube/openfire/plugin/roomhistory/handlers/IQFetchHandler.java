@@ -45,8 +45,6 @@ public class IQFetchHandler extends IQHandler {
 		IQ reply = IQ.createResultIQ(packet);
 		Element roomHistoryEl = packet.getChildElement();
 		
-		try {
-		
 		JID roomJid = new JID(roomHistoryEl.attributeValue("room"));
 		JID userJid = packet.getFrom();
 		
@@ -107,12 +105,6 @@ public class IQFetchHandler extends IQHandler {
 			}
 			
 			responseEl.add(resultSet.createResultElement());
-		}
-		
-		}
-		catch(Exception e){
-			
-			Log.error("Roomhistory exception: " + e.toString() + " " + ExceptionUtils.getStackTrace(e));
 		}
 		
 		return reply;
