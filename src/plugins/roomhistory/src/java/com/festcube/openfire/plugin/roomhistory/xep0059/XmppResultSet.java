@@ -24,7 +24,7 @@ public class XmppResultSet
         {
             try
             {
-                after = setElement.elementText("after");
+                after = setElement.elementText("after").trim().replace("\n", "");
             }
             catch (Exception e)
             {
@@ -35,7 +35,7 @@ public class XmppResultSet
         {
             try
             {
-                before = setElement.elementText("before");
+                before = setElement.elementText("before").trim().replace("\n", "");
             }
             catch (Exception e)
             {
@@ -46,7 +46,7 @@ public class XmppResultSet
         {
             try
             {
-                max = Long.parseLong(setElement.elementText("max"));
+                max = Long.parseLong(setElement.elementText("max").trim().replace("\n", ""));
                 if (max < 0)
                 {
                     max = null;
@@ -61,7 +61,7 @@ public class XmppResultSet
         {
             try
             {
-                index = Long.parseLong(setElement.elementText("index"));
+                index = Long.parseLong(setElement.elementText("index").trim().replace("\n", ""));
                 if (index < 0)
                 {
                     index = null;

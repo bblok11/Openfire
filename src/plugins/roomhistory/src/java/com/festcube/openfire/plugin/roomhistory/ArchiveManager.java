@@ -8,9 +8,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Queue;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.TimerTask;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.util.JiveConstants;
@@ -29,13 +31,18 @@ public class ArchiveManager
 	private static final String INSERT_MESSAGE = "INSERT INTO ofRoomHistory(roomJID, nick, sentDate, body) VALUES (?,?,?,?)";
 	private static final String SELECT_MESSAGES = "SELECT * FROM ofRoomHistory WHERE roomJID = ?";
 	
+	private static final long CLEANUP_LIMIT = JiveConstants.MINUTE * 2;
+	
 	
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 
 	private HashMap<String,RoomData> roomDataMap;
 	
 	private boolean archivingRunning = false;
+	private boolean cleanRunning = false;
+	
 	private TimerTask archiveTask;
+	private TimerTask cleanTask;
 	
 	private TaskEngine taskEngine;
 	
@@ -66,12 +73,25 @@ public class ArchiveManager
 		};
 		
 		taskEngine.scheduleAtFixedRate(archiveTask, JiveConstants.MINUTE, JiveConstants.MINUTE);
+		
+		
+		cleanTask = new TimerTask() {
+			@Override
+			public void run() {
+				new CleanupTask().run();
+			}
+		};
+		
+		taskEngine.scheduleAtFixedRate(cleanTask, JiveConstants.SECOND * 30, JiveConstants.MINUTE * 2);
 	}
 	
 	public void stop(){
 		
 		archiveTask.cancel();
 		archiveTask = null;
+		
+		cleanTask.cancel();
+		cleanTask = null;
 		
 		roomDataMap.clear();
 		roomDataMap = null;
@@ -83,63 +103,91 @@ public class ArchiveManager
 		
 		Date beforeDate = null;
 		Date afterDate = null;
-		Long max = resultSet.getMax();
+		Long max = null;
 		
 		ArrayList<ArchivedMessage> results = new ArrayList<ArchivedMessage>();
 		
 		try {
-			beforeDate = resultSet.getBefore() != null ? dtFormat.parseString(resultSet.getBefore()) : null;
-			afterDate = resultSet.getAfter() != null ? dtFormat.parseString(resultSet.getAfter()) : null;
+			
+			if(resultSet != null){
+				
+				beforeDate = resultSet.getBefore() != null ? dtFormat.parseString(resultSet.getBefore()) : null;
+				afterDate = resultSet.getAfter() != null ? dtFormat.parseString(resultSet.getAfter()) : null;
+				max = resultSet.getMax() != null ? resultSet.getMax() : null;
+			}
 		}
 		catch(Exception e){
-			// swallow
+			
+			Log.error("Error while parsing set: " + e.toString() + " " + ExceptionUtils.getStackTrace(e));
+			// Swallow
 		}
 		
 		RoomData roomData = getOrCreateRoomData(roomJID);
 		ArchivedMessage oldestInBuffer = roomData.getOldestMessageInBuffer();
 		
-		if(beforeDate != null && afterDate != null){
+		if(beforeDate != null){
 			
+			// beforeDate and afterDate, or only beforeDate
 			
-		}
-		else if(beforeDate != null){
-			
-			ArrayList<ArchivedMessage> messagesFromBuffer = new ArrayList<ArchivedMessage>();
-			
-			if(beforeDate.after(oldestInBuffer.getSentDate())){
+			if(oldestInBuffer != null && beforeDate.after(oldestInBuffer.getSentDate())){
 				
-				Queue<ArchivedMessage> buffer = roomData.getMessageBuffer();
+				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
+				Collections.reverse(buffer);
+				
 				for(ArchivedMessage message : buffer){
 					
 					if(message.getSentDate().after(beforeDate) || message.getSentDate().equals(beforeDate)){
+						continue;
+					}
+					
+					results.add(message);
+					
+					if(max != null && (long)results.size() >= max){
 						break;
 					}
 					
-					messagesFromBuffer.add(message);
-					
-					if(max != null){
-						if((long)messagesFromBuffer.size() >= max){
-							break;
-						}
+					if(afterDate != null && (message.getSentDate().before(afterDate) || message.getSentDate().equals(afterDate))){
+						break;
 					}
 				}
 			}
 				
-			if((long)messagesFromBuffer.size() < max){
+			if(max == null || (long)results.size() < max){
 				
 				// Get the remaining items from the database
-				Date dbBefore = messagesFromBuffer.size() > 0 ? messagesFromBuffer.get(0).getSentDate() : beforeDate;
-				ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "DESC", null, dbBefore, max - messagesFromBuffer.size());
-				Collections.reverse(messagesFromDb);
+				Date dbBefore = results.size() > 0 ? results.get(0).getSentDate() : beforeDate;
+				ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "DESC", afterDate, dbBefore, max != null ? max - results.size() : 0);
 				
 				results.addAll(messagesFromDb);
 			}
 			
-			results.addAll(messagesFromBuffer);
+			Collections.reverse(results);
 		}
-		else if(afterDate != null){
+		else {
 			
+			// No set or only afterDate
 			
+			// Database
+			ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "ASC", afterDate, null, max != null ? max : 0);
+			results.addAll(messagesFromDb);
+			
+			// Buffer
+			if(max == null || (long)results.size() < max){
+				
+				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
+				for(ArchivedMessage message : buffer){
+					
+					if(afterDate != null && (message.getSentDate().before(afterDate) || message.getSentDate().equals(afterDate))){
+						continue;
+					}
+					
+					results.add(message);
+					
+					if(max != null && (long)results.size() >= max){
+						break;
+					}
+				}
+			}
 		}
 		
 		roomData.updateLastRequest();
@@ -184,11 +232,12 @@ public class ArchiveManager
 			if(beforeDate != null){
 				query += " AND sentDate < ?";
 			}
+			
+			query += " ORDER BY sentDate " + sortDirection;
+			
 			if(limit > 0){
 				query += " LIMIT ?";
 			}
-			
-			query += " ORDER BY sentDate " + sortDirection;
 			
 			
 			int paramCursor = 1;
@@ -209,6 +258,8 @@ public class ArchiveManager
 				pstmt.setLong(paramCursor, limit);
 				paramCursor++;
 			}
+			
+			Log.info("Executing statement: " + pstmt.toString());
 
 			rs = pstmt.executeQuery();
 
@@ -309,6 +360,50 @@ public class ArchiveManager
 			}
 			
 			archivingRunning = false;
+		}
+	}
+	
+	
+	private class CleanupTask implements Runnable {
+
+		public void run() {
+			
+			Log.debug("Starting cleanup, count: " + roomDataMap.size());
+			
+			synchronized (this) {
+				
+				if (cleanRunning) {
+					return;
+				}
+				cleanRunning = true;
+			}
+			
+			if (!roomDataMap.isEmpty()) {
+				
+				Date now = new Date();
+				Iterator<Entry<String,RoomData>> iter = roomDataMap.entrySet().iterator();
+				
+				while (iter.hasNext()) {
+					
+				    Entry<String,RoomData> entry = iter.next();
+				    
+				    String key = entry.getKey();
+				    RoomData roomData = entry.getValue();
+				    
+				    if(now.getTime() - roomData.getLastRequestDate().getTime() >= CLEANUP_LIMIT){
+						
+						if(roomData.getMessageBufferSize() == 0){
+							
+							Log.debug("Removed roomData for " + key);
+							iter.remove();
+						}
+					}
+				}
+			}
+			
+			Log.debug("Cleanup done, count: " + roomDataMap.size());
+			
+			cleanRunning = false;
 		}
 	}
 }
