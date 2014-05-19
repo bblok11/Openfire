@@ -6,7 +6,6 @@ import java.util.Date;
 
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.XMPPServerInfo;
-import org.jivesoftware.openfire.muc.MultiUserChatManager;
 import org.xmpp.packet.JID;
 
 public class ArchivedMessage 

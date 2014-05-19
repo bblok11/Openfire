@@ -2,6 +2,7 @@ package com.festcube.openfire.plugin.roomhistory;
 
 import java.util.Date;
 
+import org.dom4j.Element;
 import org.jivesoftware.openfire.muc.MUCEventListener;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
@@ -51,8 +52,16 @@ public class MUCInterceptor implements MUCEventListener {
 			Message message) {
 		
 		String messageBody = message.getBody();
+		Element notificationElement = message.getChildElement("cubenotification", "fc:cube:notification");
 		
-		if(messageBody != null){
+		if(notificationElement != null){
+			
+			int typeId = Integer.parseInt(notificationElement.attributeValue("type"));
+			String content = notificationElement.getTextTrim();
+			
+			archiveManager.processNotification(user, roomJID, new Date(), messageBody, typeId, content);
+		}
+		else if(messageBody != null){
 		
 			archiveManager.processMessage(user, roomJID, new Date(), messageBody);
 		}
