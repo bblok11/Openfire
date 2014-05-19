@@ -18,6 +18,7 @@ import org.xmpp.packet.PacketError;
 
 import com.festcube.openfire.plugin.roomhistory.ArchiveManager;
 import com.festcube.openfire.plugin.roomhistory.MUCHelper;
+import com.festcube.openfire.plugin.roomhistory.models.ArchivedCubeNotification;
 import com.festcube.openfire.plugin.roomhistory.models.ArchivedMessage;
 import com.festcube.openfire.plugin.roomhistory.xep0059.XmppResultSet;
 
@@ -77,6 +78,15 @@ public class IQFetchHandler extends IQHandler {
 			
 			Element bodyEl = messageEl.addElement("body");
 			bodyEl.addText(message.getBody());
+			
+			if(message instanceof ArchivedCubeNotification){
+				
+				ArchivedCubeNotification notification = (ArchivedCubeNotification)message;
+				
+				Element notificationEl = messageEl.addElement("cubenotification", "fc:cube:notification");
+				notificationEl.addAttribute("type", String.valueOf(notification.getNoficitationType()));
+				notificationEl.addText(notification.getNotificationContent());
+			}
 			
 			Element delayEl = messageEl.addElement("delay", "urn:xmpp:delay");
 			delayEl.addAttribute("stamp", XMPPDateTimeFormat.format(message.getSentDate()));

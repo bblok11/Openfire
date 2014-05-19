@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -21,6 +22,7 @@ import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 
+import com.festcube.openfire.plugin.roomhistory.models.ArchivedCubeNotification;
 import com.festcube.openfire.plugin.roomhistory.models.ArchivedMessage;
 import com.festcube.openfire.plugin.roomhistory.models.RoomData;
 import com.festcube.openfire.plugin.roomhistory.xep0059.XmppResultSet;
@@ -28,7 +30,7 @@ import com.festcube.openfire.plugin.roomhistory.xep0059.XmppResultSet;
 
 public class ArchiveManager 
 {
-	private static final String INSERT_MESSAGE = "INSERT INTO ofRoomHistory(roomJID, nick, sentDate, body) VALUES (?,?,?,?)";
+	private static final String INSERT_MESSAGE = "INSERT INTO ofRoomHistory(roomJID, nick, sentDate, body, cubeNotificationType, cubeNotificationContent) VALUES (?,?,?,?,?,?)";
 	private static final String SELECT_MESSAGES = "SELECT * FROM ofRoomHistory WHERE roomJID = ?";
 	
 	private static final long CLEANUP_LIMIT = JiveConstants.MINUTE * 2;
@@ -59,6 +61,16 @@ public class ArchiveManager
 		
 		RoomData roomData = getOrCreateRoomData(receiver);
 		roomData.addMessage(message);
+		
+		roomData.updateLastRequest();
+	}
+	
+	public void processNotification(JID sender, JID receiver, Date date, String body, int notificationType, String notificationContent){
+		
+		ArchivedCubeNotification notification = new ArchivedCubeNotification(sender, receiver, date, body, notificationType, notificationContent);
+		
+		RoomData roomData = getOrCreateRoomData(receiver);
+		roomData.addMessage(notification);
 		
 		roomData.updateLastRequest();
 	}
@@ -258,14 +270,20 @@ public class ArchiveManager
 				pstmt.setLong(paramCursor, limit);
 				paramCursor++;
 			}
-			
-			Log.info("Executing statement: " + pstmt.toString());
 
 			rs = pstmt.executeQuery();
 
 			while (rs.next()) {
 				
-				ArchivedMessage message = new ArchivedMessage(rs);
+				ArchivedMessage message = null;
+				
+				if(rs.getInt("cubeNotificationType") > 0){
+					message = new ArchivedCubeNotification(rs);
+				}
+				else {
+					message = new ArchivedMessage(rs);
+				}
+				
 				results.add(message);
 			}
 			
@@ -330,6 +348,19 @@ public class ArchiveManager
 							pstmt.setLong(3, message.getSentDate().getTime());
 							DbConnectionManager.setLargeTextField(pstmt, 4, message.getBody());
 							
+							if(message instanceof ArchivedCubeNotification){
+								
+								ArchivedCubeNotification notification = (ArchivedCubeNotification)message;
+								
+								pstmt.setInt(5, notification.getNoficitationType());
+								pstmt.setString(6, notification.getNotificationContent());
+							}
+							else {
+								
+								pstmt.setNull(5, Types.INTEGER);
+								pstmt.setNull(6, Types.INTEGER);
+							}
+							
 							if (DbConnectionManager.isBatchUpdatesSupported()) {
 								pstmt.addBatch();
 							} 
@@ -368,8 +399,6 @@ public class ArchiveManager
 
 		public void run() {
 			
-			Log.debug("Starting cleanup, count: " + roomDataMap.size());
-			
 			synchronized (this) {
 				
 				if (cleanRunning) {
@@ -377,6 +406,8 @@ public class ArchiveManager
 				}
 				cleanRunning = true;
 			}
+			
+			Log.debug("Starting cleanup, count: " + roomDataMap.size());
 			
 			if (!roomDataMap.isEmpty()) {
 				
