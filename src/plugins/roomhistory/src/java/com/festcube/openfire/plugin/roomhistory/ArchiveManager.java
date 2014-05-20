@@ -137,18 +137,44 @@ public class ArchiveManager
 		RoomData roomData = getOrCreateRoomData(roomJID);
 		ArchivedMessage oldestInBuffer = roomData.getOldestMessageInBuffer();
 		
-		if(beforeDate != null){
+		if(afterDate != null && beforeDate == null){
 			
-			// beforeDate and afterDate, or only beforeDate
+			// Only afterDate
 			
-			if(oldestInBuffer != null && beforeDate.after(oldestInBuffer.getSentDate())){
+			// Database
+			ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "ASC", afterDate, null, max != null ? max : 0);
+			results.addAll(messagesFromDb);
+			
+			// Buffer
+			if(max == null || (long)results.size() < max){
+				
+				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
+				for(ArchivedMessage message : buffer){
+					
+					if(afterDate != null && (message.getSentDate().before(afterDate) || message.getSentDate().equals(afterDate))){
+						continue;
+					}
+					
+					results.add(message);
+					
+					if(max != null && (long)results.size() >= max){
+						break;
+					}
+				}
+			}
+		}
+		else {
+			
+			// beforeDate and afterDate, only beforeDate or none
+			
+			if(oldestInBuffer != null && ((beforeDate == null || (beforeDate != null && beforeDate.after(oldestInBuffer.getSentDate()))))){
 				
 				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
 				Collections.reverse(buffer);
 				
 				for(ArchivedMessage message : buffer){
 					
-					if(message.getSentDate().after(beforeDate) || message.getSentDate().equals(beforeDate)){
+					if(beforeDate != null && (message.getSentDate().after(beforeDate) || message.getSentDate().equals(beforeDate))){
 						continue;
 					}
 					
@@ -174,32 +200,6 @@ public class ArchiveManager
 			}
 			
 			Collections.reverse(results);
-		}
-		else {
-			
-			// No set or only afterDate
-			
-			// Database
-			ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "ASC", afterDate, null, max != null ? max : 0);
-			results.addAll(messagesFromDb);
-			
-			// Buffer
-			if(max == null || (long)results.size() < max){
-				
-				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
-				for(ArchivedMessage message : buffer){
-					
-					if(afterDate != null && (message.getSentDate().before(afterDate) || message.getSentDate().equals(afterDate))){
-						continue;
-					}
-					
-					results.add(message);
-					
-					if(max != null && (long)results.size() >= max){
-						break;
-					}
-				}
-			}
 		}
 		
 		roomData.updateLastRequest();
