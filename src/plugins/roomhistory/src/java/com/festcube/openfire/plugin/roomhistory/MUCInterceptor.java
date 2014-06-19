@@ -58,8 +58,16 @@ public class MUCInterceptor implements MUCEventListener {
 			
 			int typeId = Integer.parseInt(notificationElement.attributeValue("type"));
 			String content = notificationElement.getTextTrim();
+			String silent = notificationElement.attributeValue("silent");
 			
-			archiveManager.processNotification(user, roomJID, new Date(), messageBody, typeId, content);
+			boolean isSilent = false;
+			if(silent != null){
+				if(silent.equals("silent")){
+					isSilent = true;
+				}
+			}
+			
+			archiveManager.processNotification(user, roomJID, new Date(), messageBody, typeId, isSilent, content);
 		}
 		else if(messageBody != null){
 		
