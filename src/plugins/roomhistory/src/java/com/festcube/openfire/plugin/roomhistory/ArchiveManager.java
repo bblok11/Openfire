@@ -65,7 +65,13 @@ public class ArchiveManager
 		roomData.updateLastRequest();
 	}
 	
-	public void processNotification(JID sender, JID receiver, Date date, String body, int notificationType, String notificationContent){
+	public void processNotification(JID sender, JID receiver, Date date, String body, int notificationType, boolean silent, String notificationContent){
+		
+		if(silent){
+			
+			// Don't save silent messages
+			return;
+		}
 		
 		ArchivedCubeNotification notification = new ArchivedCubeNotification(sender, receiver, date, body, notificationType, notificationContent);
 		
