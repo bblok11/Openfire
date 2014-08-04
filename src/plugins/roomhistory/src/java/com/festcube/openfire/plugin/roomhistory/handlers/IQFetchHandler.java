@@ -2,7 +2,6 @@ package com.festcube.openfire.plugin.roomhistory.handlers;
 
 import java.util.ArrayList;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.dom4j.Element;
 import org.dom4j.QName;
