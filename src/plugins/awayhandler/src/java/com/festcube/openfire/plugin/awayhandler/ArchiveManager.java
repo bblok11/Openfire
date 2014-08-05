@@ -23,6 +23,8 @@ public class ArchiveManager
 	private static final String INSERT_UPDATE_MISSED_MESSAGES_VALUES = "(?, ?, 1, NULL, ?)";
 	private static final String INSERT_UPDATE_MISSED_MESSAGES_2 = " ON DUPLICATE KEY UPDATE missedMessages = missedMessages+1, lastMissedMessageDate = VALUES(lastMissedMessageDate)";
 	
+	private static final String UPDATE_RESET_MISSED_MESSAGED = "UPDATE ofAwayData SET missedMessages = 0, lastMissedMessageDate = NULL WHERE roomJID = ? AND nick = ?";
+	
 	
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 	
@@ -75,10 +77,6 @@ public class ArchiveManager
 		catch (SQLException sqle) {
 			
 			Log.error("Error increasing missed messages", sqle);
-		} 
-		finally {
-		
-			DbConnectionManager.closeConnection(pstmt, con);
 		}
 		
 		return success;
@@ -107,7 +105,6 @@ public class ArchiveManager
 			
 			query += INSERT_UPDATE_LAST_SEEN_2;
 			
-			con = DbConnectionManager.getConnection();
 			pstmt = con.prepareStatement(query);
 			
 			long date = new Date().getTime();
@@ -130,13 +127,31 @@ public class ArchiveManager
 			
 			Log.error("Error updating last seen date", sqle);
 		} 
-		finally {
 		
-			DbConnectionManager.closeConnection(pstmt, con);
+		return success;
+	}
+	
+	public boolean resetMissedMessages(Connection con, JID roomJid, String nickname)
+	{
+		PreparedStatement pstmt = null;
+		boolean success = false;
+		
+		try {
+			
+			pstmt = con.prepareStatement(UPDATE_RESET_MISSED_MESSAGED);
+			pstmt.setString(1, roomJid.toBareJID());
+			pstmt.setString(2, nickname);
+			
+			success = pstmt.execute();
+		}
+		catch (SQLException sqle) {
+			
+			Log.error("Error resetting missed messages", sqle);
 		}
 		
 		return success;
 	}
+	
 	
 	public Connection getConnection(){
 		
