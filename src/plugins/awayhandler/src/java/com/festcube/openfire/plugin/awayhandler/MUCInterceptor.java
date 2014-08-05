@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.muc.MUCEventListener;
 import org.jivesoftware.openfire.muc.MUCRole;
 import org.jivesoftware.openfire.muc.MUCRoom;
@@ -99,6 +100,8 @@ public class MUCInterceptor implements MUCEventListener {
 		}
 		
 		archiveManager.updateLastSeenDate(dbConnection, roomJID, presentNicknames);
+		
+		DbConnectionManager.closeConnection(dbConnection);
 	}
 
 	@Override
