@@ -54,6 +54,8 @@ public class MUCInterceptor implements MUCEventListener {
 		String messageBody = message.getBody();
 		Element notificationElement = message.getChildElement("cubenotification", "fc:cube:notification");
 		
+		Date date = new Date();
+		
 		if(notificationElement != null){
 			
 			int typeId = Integer.parseInt(notificationElement.attributeValue("type"));
@@ -67,11 +69,16 @@ public class MUCInterceptor implements MUCEventListener {
 				}
 			}
 			
-			archiveManager.processNotification(user, roomJID, new Date(), messageBody, typeId, isSilent, content);
+			archiveManager.processNotification(user, roomJID, date, messageBody, typeId, isSilent, content);
 		}
 		else if(messageBody != null){
 		
-			archiveManager.processMessage(user, roomJID, new Date(), messageBody);
+			archiveManager.processMessage(user, roomJID, date, messageBody);
+		}
+		
+		// Save last message date
+		if(messageBody != null){
+			archiveManager.saveLastMessageDate(roomJID, date);
 		}
 	}
 

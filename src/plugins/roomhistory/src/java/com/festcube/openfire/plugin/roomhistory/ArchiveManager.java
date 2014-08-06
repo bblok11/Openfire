@@ -33,6 +33,8 @@ public class ArchiveManager
 	private static final String INSERT_MESSAGE = "INSERT INTO ofRoomHistory(roomJID, nick, sentDate, body, cubeNotificationType, cubeNotificationContent) VALUES (?,?,?,?,?,?)";
 	private static final String SELECT_MESSAGES = "SELECT * FROM ofRoomHistory WHERE roomJID = ?";
 	
+	private static final String INSERT_UPDATE_LAST_MESSAGE_DATE = "INSERT INTO ofRoomStatus(roomJID, lastMessageDate) VALUES (?, ?) ON DUPLICATE KEY UPDATE lastMessageDate = VALUES(lastMessageDate)";
+	
 	private static final long CLEANUP_LIMIT = JiveConstants.MINUTE * 2;
 	
 	
@@ -223,6 +225,31 @@ public class ArchiveManager
 		
 		RoomData roomData = getOrCreateRoomData(roomJID);
 		return roomData.isFirstMessage(message);
+	}
+	
+	public boolean saveLastMessageDate(JID roomJID, Date date)
+	{
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		
+		try {
+			
+			con = DbConnectionManager.getConnection();
+			
+			pstmt = con.prepareStatement(INSERT_UPDATE_LAST_MESSAGE_DATE);
+			pstmt.setString(1, roomJID.toBareJID());
+			pstmt.setLong(2, date.getTime());
+			
+			return pstmt.execute();
+		} 
+		catch (SQLException sqle) {
+			Log.error("Error update last message date", sqle);
+		} 
+		finally {
+			DbConnectionManager.closeConnection(pstmt, con);
+		}
+		
+		return false;
 	}
 	
 	
