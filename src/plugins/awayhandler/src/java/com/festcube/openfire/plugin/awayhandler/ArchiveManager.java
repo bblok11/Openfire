@@ -19,11 +19,11 @@ public class ArchiveManager
 	private static final String INSERT_UPDATE_LAST_SEEN_VALUES = "(?,?,0,?)";
 	private static final String INSERT_UPDATE_LAST_SEEN_2 = " ON DUPLICATE KEY UPDATE lastSeenDate = VALUES(lastSeenDate)";
 	
-	private static final String INSERT_UPDATE_MISSED_MESSAGES_1 = "INSERT INTO ofAwayData(roomJID, nick, missedMessages, lastSeenDate, lastMissedMessageDate) VALUES ";
-	private static final String INSERT_UPDATE_MISSED_MESSAGES_VALUES = "(?, ?, 1, NULL, ?)";
-	private static final String INSERT_UPDATE_MISSED_MESSAGES_2 = " ON DUPLICATE KEY UPDATE missedMessages = missedMessages+1, lastMissedMessageDate = VALUES(lastMissedMessageDate)";
+	private static final String INSERT_UPDATE_MISSED_MESSAGES_1 = "INSERT INTO ofAwayData(roomJID, nick, missedMessages, lastSeenDate) VALUES ";
+	private static final String INSERT_UPDATE_MISSED_MESSAGES_VALUES = "(?, ?, 1, NULL)";
+	private static final String INSERT_UPDATE_MISSED_MESSAGES_2 = " ON DUPLICATE KEY UPDATE missedMessages = missedMessages+1";
 	
-	private static final String UPDATE_RESET_MISSED_MESSAGED = "UPDATE ofAwayData SET missedMessages = 0, lastMissedMessageDate = NULL WHERE roomJID = ? AND nick = ?";
+	private static final String UPDATE_RESET_MISSED_MESSAGED = "UPDATE ofAwayData SET missedMessages = 0, lastSeenDate = ? WHERE roomJID = ? AND nick = ?";
 	
 	
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
@@ -58,7 +58,6 @@ public class ArchiveManager
 			
 			pstmt = con.prepareStatement(query);
 			
-			long date = new Date().getTime();
 			String roomBareJid = roomJid.toBareJID();
 			
 			int argCounter = 1;
@@ -67,9 +66,8 @@ public class ArchiveManager
 				
 				pstmt.setString(argCounter, roomBareJid);
 				pstmt.setString(argCounter+1, nick);
-				pstmt.setLong(argCounter+2, date);
 				
-				argCounter += 3;
+				argCounter += 2;
 			}
 			
 			success = pstmt.execute();
@@ -139,8 +137,9 @@ public class ArchiveManager
 		try {
 			
 			pstmt = con.prepareStatement(UPDATE_RESET_MISSED_MESSAGED);
-			pstmt.setString(1, roomJid.toBareJID());
-			pstmt.setString(2, nickname);
+			pstmt.setLong(1, new Date().getTime());
+			pstmt.setString(2, roomJid.toBareJID());
+			pstmt.setString(3, nickname);
 			
 			success = pstmt.execute();
 		}

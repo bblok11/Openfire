@@ -8,7 +8,6 @@ CREATE TABLE ofAwayData (
    nick		         		VARCHAR(255)     NOT NULL,
    missedMessages          	INT unsigned     NOT NULL,
    lastSeenDate        		BIGINT,
-   lastMissedMessageDate	BIGINT,
    
    PRIMARY KEY (`roomJID`,`nick`),
    INDEX ofAwayData_nick_indx (nick)
