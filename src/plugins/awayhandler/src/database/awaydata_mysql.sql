@@ -12,3 +12,10 @@ CREATE TABLE ofAwayData (
    PRIMARY KEY (`roomJID`,`nick`),
    INDEX ofAwayData_nick_indx (nick)
 );
+
+CREATE TABLE ofRoomStatus (
+   roomJID			 		VARCHAR(255)     NOT NULL,
+   lastMessageDate     		BIGINT           NOT NULL,
+   
+   PRIMARY KEY (`roomJID`)
+);
