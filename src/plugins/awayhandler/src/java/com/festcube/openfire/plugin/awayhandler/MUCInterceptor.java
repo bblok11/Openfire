@@ -3,6 +3,7 @@ package com.festcube.openfire.plugin.awayhandler;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.muc.MUCEventListener;
@@ -100,6 +101,9 @@ public class MUCInterceptor implements MUCEventListener {
 		}
 		
 		archiveManager.updateLastSeenDate(dbConnection, roomJID, presentNicknames);
+		
+		// Save room last message date
+		archiveManager.updateRoomLastMessageDate(dbConnection, roomJID, new Date());
 		
 		DbConnectionManager.closeConnection(dbConnection);
 	}

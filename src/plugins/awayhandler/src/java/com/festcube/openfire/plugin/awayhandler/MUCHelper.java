@@ -1,5 +1,7 @@
 package com.festcube.openfire.plugin.awayhandler;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -51,6 +53,14 @@ public class MUCHelper
 		
 		MultiUserChatManager manager = XMPPServer.getInstance().getMultiUserChatManager();
 		MultiUserChatService service = manager.getMultiUserChatService(jid);
+		
+		return service;
+	}
+	
+	private static MultiUserChatService getMUCService(String subdomain){
+		
+		MultiUserChatManager manager = XMPPServer.getInstance().getMultiUserChatManager();
+		MultiUserChatService service = manager.getMultiUserChatService(subdomain);
 		
 		return service;
 	}
