@@ -75,11 +75,6 @@ public class MUCInterceptor implements MUCEventListener {
 		
 			archiveManager.processMessage(user, roomJID, date, messageBody);
 		}
-		
-		// Save last message date
-		if(messageBody != null){
-			archiveManager.saveLastMessageDate(roomJID, date);
-		}
 	}
 
 	@Override

@@ -125,5 +125,4 @@ public class IQFetchHandler extends IQHandler {
 		reply.setError(condition);
 		return reply;
 	}
-
 }
