@@ -5,17 +5,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
+import org.dom4j.Element;
 import org.jivesoftware.database.DbConnectionManager;
+import org.jivesoftware.openfire.MessageRouter;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MUCEventListener;
 import org.jivesoftware.openfire.muc.MUCRole;
 import org.jivesoftware.openfire.muc.MUCRoom;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
-import org.xmpp.packet.Presence.Show;
+import org.xmpp.packet.Message.Type;
 
 
 public class MUCInterceptor implements MUCEventListener {
 
+	protected static final String NAMESPACE = "fc:awaydata";
+	
 	private ArchiveManager archiveManager;
 	
 	public MUCInterceptor(ArchiveManager manager){
@@ -38,6 +43,15 @@ public class MUCInterceptor implements MUCEventListener {
 	@Override
 	public void occupantJoined(JID roomJID, JID user, String nickname) {
 		
+		// Reset missed messages for this user
+		
+		Connection dbConnection = archiveManager.getConnection();
+		if(dbConnection != null){
+			
+			archiveManager.resetMissedMessages(dbConnection, roomJID, nickname);
+			
+			DbConnectionManager.closeConnection(dbConnection);
+		}
 	}
 
 	@Override
@@ -74,9 +88,8 @@ public class MUCInterceptor implements MUCEventListener {
 		for(MUCRole participant : participants){
 			
 			JID jid = participant.getUserAddress().asBareJID();
-			Show show = participant.getPresence().getShow();
 			
-			if(jid != null && show.equals(Show.chat)){
+			if(jid != null){
 				
 				awayJIDs.remove(jid);
 				presentJIDs.add(jid);
@@ -106,6 +119,28 @@ public class MUCInterceptor implements MUCEventListener {
 		archiveManager.updateRoomLastMessageDate(dbConnection, roomJID, new Date());
 		
 		DbConnectionManager.closeConnection(dbConnection);
+		
+		
+		// Let away users know there was a message
+		String xmppDomain = XMPPServer.getInstance().getServerInfo().getXMPPDomain();
+		MessageRouter messageRouter = XMPPServer.getInstance().getMessageRouter();
+		
+		for(JID jid : awayJIDs){
+			
+			if(jid == null){
+				continue;
+			}
+			
+			Message awayMessage = new Message();
+			awayMessage.setType(Type.headline);
+			awayMessage.setFrom(xmppDomain);
+			awayMessage.setTo(jid);
+			
+			Element missedEl = awayMessage.addChildElement("missedroommessage", NAMESPACE);
+			missedEl.addAttribute("roomJid", roomJID.toBareJID());
+			
+			messageRouter.route(awayMessage);
+		}
 	}
 
 	@Override
