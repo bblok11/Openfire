@@ -1,7 +1,9 @@
 package com.festcube.openfire.plugin.awayhandler.handlers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -45,9 +47,44 @@ public class IQFetchHandler extends IQHandler
 		JID from = packet.getFrom();
 		String nick = from.getNode();
 		
-		Element responseEl = reply.setChildElement("awaydata", NAMESPACE);
+		HashMap<JID, AwayData> awayData = null;
 		
-		HashMap<JID, AwayData> awayData = archiveManager.getAwayDataByNick(nick);
+		Element awayDataEl = packet.getChildElement();
+		
+		Element syncEl = awayDataEl.element("sync");
+		
+		if(syncEl != null){
+			
+			ArrayList<JID> roomJids = new ArrayList<JID>();
+			
+			@SuppressWarnings("unchecked")
+			List<Element> roomElements = syncEl.elements("room");
+			
+			for(Element roomEl : roomElements){
+				
+				try {
+					
+					JID roomJid = new JID(roomEl.getTextTrim());
+					
+					if(roomJid != null){
+						
+						roomJids.add(roomJid);
+					}
+				}
+				catch(Exception e){
+					// Ignore
+				}
+			}
+			
+			awayData = archiveManager.getAwayDataSync(nick, roomJids);
+		}
+		else {
+			
+			awayData = archiveManager.getAwayDataByNick(nick);
+		}
+		
+		Element responseEl = reply.setChildElement("awaydata", NAMESPACE);
+
 		if(awayData.size() > 0){
 			
 			HashMap<JID, RoomStatus> roomStatuses = archiveManager.getRoomStatusForRooms(awayData.keySet());
