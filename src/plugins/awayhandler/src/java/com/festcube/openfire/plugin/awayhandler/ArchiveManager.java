@@ -20,6 +20,7 @@ import com.festcube.openfire.plugin.awayhandler.models.RoomStatus;
 
 public class ArchiveManager 
 {
+	private static final String SELECT_SYNC = "SELECT * FROM ofAwayData WHERE nick = ? AND (missedMessages > 0 OR roomJID IN %s)";
 	private static final String SELECT_BY_NICK = "SELECT * FROM ofAwayData WHERE nick = ?";
 	
 	private static final String INSERT_UPDATE_LAST_SEEN_1 = "INSERT INTO ofAwayData(roomJID, nick, missedMessages, lastSeenDate) VALUES ";
@@ -72,6 +73,71 @@ public class ArchiveManager
 		
 		return results;
 	}
+	
+	public HashMap<JID, AwayData> getAwayDataSync(String nick, ArrayList<JID> roomJids)
+	{
+		HashMap<JID, AwayData> results = new HashMap<JID, AwayData>();
+			
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		
+		try {
+			
+			con = DbConnectionManager.getConnection();
+			
+			String roomsQuery = "";
+			if(roomJids.size() > 0){
+				
+				int jidCounter = 0;
+				roomsQuery = "(";
+				
+				for(JID jid : roomJids){
+					
+					if(jidCounter > 0){
+						roomsQuery += ",";
+					}
+					
+					roomsQuery += "?";
+					
+					jidCounter++;
+				}
+				
+				roomsQuery += ")";
+			}
+			else {
+				roomsQuery = "(NULL)";
+			}
+
+			pstmt = con.prepareStatement(String.format(SELECT_SYNC, roomsQuery));
+			pstmt.setString(1, nick);
+			
+			int argCounter = 2;
+			for(JID jid : roomJids){
+				
+				pstmt.setString(argCounter, jid.toBareJID());
+				argCounter++;
+			}
+
+			rs = pstmt.executeQuery();
+
+			while (rs.next()) {
+				
+				AwayData data = new AwayData(rs);
+				results.put(data.getRoomJID(), data);
+			}
+			
+		} 
+		catch (SQLException sqle) {
+			Log.error("Error selecting awaydata", sqle);
+		} 
+		finally {
+			DbConnectionManager.closeConnection(rs, pstmt, con);
+		}
+		
+		return results;
+	}
+	
 	
 	public HashMap<JID, RoomStatus> getRoomStatusForRooms(Collection<JID> roomJIDs)
 	{
