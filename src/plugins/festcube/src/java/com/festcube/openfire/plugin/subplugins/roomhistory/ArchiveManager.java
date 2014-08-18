@@ -403,12 +403,30 @@ public class ArchiveManager
 					        
 							
 							// Recipients
+					        int recipientCounter = 0;
+					        
 							for(JID recipient : notification.getRecipients()){
 								
 								pstmtNotificationRecipient.setLong(1, notification.getId());
 								pstmtNotificationRecipient.setString(2, recipient.toBareJID());
 								
-								pstmtNotificationRecipient.execute();
+								if (DbConnectionManager.isBatchUpdatesSupported()) {
+									pstmtNotificationRecipient.addBatch();
+								} 
+								else {
+									pstmtNotificationRecipient.execute();
+								}
+								
+								// Only batch up to 500 items at a time.
+								if (recipientCounter % 500 == 0 && DbConnectionManager.isBatchUpdatesSupported()) {
+									pstmtNotificationRecipient.executeBatch();
+								}
+								
+								recipientCounter++;
+							}
+							
+							if (DbConnectionManager.isBatchUpdatesSupported()) {
+								pstmtNotificationRecipient.executeBatch();
 							}
 						
 							con.commit();
