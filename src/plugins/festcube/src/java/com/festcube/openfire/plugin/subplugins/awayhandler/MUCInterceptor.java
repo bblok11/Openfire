@@ -79,8 +79,9 @@ public class MUCInterceptor implements MUCEventListener {
 		
 		Element cubeNotificationEl = message.getChildElement("cubenotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
 		boolean messageBodyIsEmpty = message.getBody() == null || message.getBody().equals("");
+		boolean isNotification = message.getType() == Type.headline && cubeNotificationEl != null;
 		
-		if(messageBodyIsEmpty && !(message.getType() == Type.headline && cubeNotificationEl != null)){
+		if(messageBodyIsEmpty && !isNotification){
 			
 			// Ignore, this is an empty message and no notification
 			return;
@@ -105,18 +106,7 @@ public class MUCInterceptor implements MUCEventListener {
 			}
 		}
 		
-		// Increase missed messages for away users
-		ArrayList<String> awayNicknames = new ArrayList<String>();
-		
-		for(JID jid : awayJIDs){
-			awayNicknames.add(jid.getNode());
-		}
-		
-		if(awayNicknames.size() > 0){
-			archiveManager.increaseMissedMessages(dbConnection, roomJID, awayNicknames);
-		}
-		
-		
+
 		// Update last seen date for participants
 		ArrayList<String> presentNicknames = new ArrayList<String>();
 		
@@ -128,31 +118,49 @@ public class MUCInterceptor implements MUCEventListener {
 			archiveManager.updateLastSeenDate(dbConnection, roomJID, presentNicknames);
 		}
 		
+		
+		if(!isNotification){
+			
+			// Increase missed messages for away users
+			ArrayList<String> awayNicknames = new ArrayList<String>();
+			
+			for(JID jid : awayJIDs){
+				awayNicknames.add(jid.getNode());
+			}
+			
+			if(awayNicknames.size() > 0){
+				archiveManager.increaseMissedMessages(dbConnection, roomJID, awayNicknames);
+			}
+		}
+		
 		// Save room last message date
 		archiveManager.updateRoomLastMessageDate(dbConnection, roomJID, new Date());
 		
 		DbConnectionManager.closeConnection(dbConnection);
 		
 		
-		// Let away users know there was a message
-		String xmppDomain = XMPPServer.getInstance().getServerInfo().getXMPPDomain();
-		MessageRouter messageRouter = XMPPServer.getInstance().getMessageRouter();
-		
-		for(JID jid : awayJIDs){
+		if(!isNotification){
 			
-			if(jid == null){
-				continue;
+			// Let away users know there was a message
+			String xmppDomain = XMPPServer.getInstance().getServerInfo().getXMPPDomain();
+			MessageRouter messageRouter = XMPPServer.getInstance().getMessageRouter();
+			
+			for(JID jid : awayJIDs){
+				
+				if(jid == null){
+					continue;
+				}
+				
+				Message awayMessage = new Message();
+				awayMessage.setType(Type.headline);
+				awayMessage.setFrom(xmppDomain);
+				awayMessage.setTo(jid);
+				
+				Element missedEl = awayMessage.addChildElement("missedroommessage", MUCHelper.NS_IQ_AWAYDATA);
+				missedEl.addAttribute("roomJid", roomJID.toBareJID());
+				
+				messageRouter.route(awayMessage);
 			}
-			
-			Message awayMessage = new Message();
-			awayMessage.setType(Type.headline);
-			awayMessage.setFrom(xmppDomain);
-			awayMessage.setTo(jid);
-			
-			Element missedEl = awayMessage.addChildElement("missedroommessage", MUCHelper.NS_IQ_AWAYDATA);
-			missedEl.addAttribute("roomJid", roomJID.toBareJID());
-			
-			messageRouter.route(awayMessage);
 		}
 	}
 
