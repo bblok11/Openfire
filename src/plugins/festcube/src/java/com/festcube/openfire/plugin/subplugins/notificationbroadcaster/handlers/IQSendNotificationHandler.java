@@ -1,6 +1,7 @@
 package com.festcube.openfire.plugin.subplugins.notificationbroadcaster.handlers;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -42,7 +43,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		
 		this.roomHistoryPlugin = roomHistory;
 		this.info = new IQHandlerInfo("send", MUCHelper.NS_IQ_SEND_NOTIFICATIONS);
-		this.fromJid = new JID(XMPPServer.getInstance().getServerInfo().getHostname());
+		this.fromJid = new JID(XMPPServer.getInstance().getServerInfo().getXMPPDomain());
 		
 		// Load allowed users
 		String allowedStr = JiveGlobals.getProperty("plugin.notificationBroadcaster.allowedJids.sendnotifications", "");
@@ -155,6 +156,7 @@ public class IQSendNotificationHandler extends IQHandler {
 	
 	private void sendCubeNotification(Element notificationEl)
 	{
+		Element idEl = notificationEl.element("id");
 		Element typeEl = notificationEl.element("type");
 		Element silentEl = notificationEl.element("silent");
 		Element dataEl = notificationEl.element("data");
@@ -165,6 +167,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		}
 		
 		String typeValue = typeEl.getTextTrim();
+		String idValue = idEl.getTextTrim();
 		String dataValue = dataEl.getTextTrim();
 		boolean isSilent = silentEl != null;
 		
@@ -173,11 +176,13 @@ public class IQSendNotificationHandler extends IQHandler {
 		
 		
 		MultiUserChatManager manager = XMPPServer.getInstance().getMultiUserChatManager();
+		MessageRouter messageRouter = XMPPServer.getInstance().getMessageRouter();
 		
 		Message generatedMessage = new Message();
 		generatedMessage.setType(Type.headline);
 		
 		Element generatedNotification = generatedMessage.addChildElement("cubenotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
+		generatedNotification.addAttribute("id", idValue);
 		generatedNotification.addAttribute("type", typeValue);
 		
 		if(isSilent){
@@ -212,6 +217,7 @@ public class IQSendNotificationHandler extends IQHandler {
 						continue;
 					}
 					
+					// Send message in cube
 					Message newMessage = generatedMessage.createCopy();
 					newMessage.setTo(jid);
 					newMessage.setFrom(jid);
@@ -220,6 +226,21 @@ public class IQSendNotificationHandler extends IQHandler {
 					
 					// Let the listeners know
 					MUCEventDispatcher.messageReceived(jid, jid, "", newMessage);
+					
+					
+					// Send notification to users
+					if(!isSilent){
+						
+						Collection<JID> roomMembers = room.getMembers();
+						for(JID member : roomMembers){
+							
+							Message userMessage = generatedMessage.createCopy();
+							userMessage.setFrom(fromJid);
+							userMessage.setTo(member);
+							
+							messageRouter.route(userMessage);
+						}
+					}
 					
 					recipientJids.add(jid);
 				}
