@@ -159,6 +159,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		Element idEl = notificationEl.element("id");
 		Element typeEl = notificationEl.element("type");
 		Element silentEl = notificationEl.element("silent");
+		Element initiatingUserEl = notificationEl.element("initiatinguser");
 		Element dataEl = notificationEl.element("data");
 		Element recipientsEl = notificationEl.element("recipients");
 		
@@ -170,6 +171,17 @@ public class IQSendNotificationHandler extends IQHandler {
 		String idValue = idEl.getTextTrim();
 		String dataValue = dataEl.getTextTrim();
 		boolean isSilent = silentEl != null;
+		JID initiatingUserJID = null;
+		
+		if(initiatingUserEl != null){
+			
+			String initiatingUser = initiatingUserEl.getTextTrim();
+			if(initiatingUser != null && initiatingUser != ""){
+				initiatingUserJID = new JID(initiatingUser);
+			}
+		}
+		
+		Log.info("Initiating user: " + (initiatingUserJID != null ? initiatingUserJID.toString() : "none"));
 		
 		@SuppressWarnings("unchecked")
 		List<Element> recipients = recipientsEl.elements("jid");
@@ -233,6 +245,12 @@ public class IQSendNotificationHandler extends IQHandler {
 						
 						Collection<JID> roomMembers = room.getMembers();
 						for(JID member : roomMembers){
+							
+							if(initiatingUserJID != null && initiatingUserJID.equals(member)){
+								
+								Log.info("Skipping initiating user " + member.toString());
+								continue;
+							}
 							
 							Message userMessage = generatedMessage.createCopy();
 							userMessage.setFrom(fromJid);
