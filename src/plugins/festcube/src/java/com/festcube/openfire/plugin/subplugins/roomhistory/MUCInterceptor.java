@@ -1,11 +1,16 @@
 package com.festcube.openfire.plugin.subplugins.roomhistory;
 
+import java.text.ParseException;
 import java.util.Date;
 
 import org.jivesoftware.openfire.muc.MUCEventListener;
+import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
 import org.xmpp.packet.Message.Type;
+import org.dom4j.Element;
+
+import com.festcube.openfire.plugin.MUCHelper;
 
 public class MUCInterceptor implements MUCEventListener {
 
@@ -54,9 +59,27 @@ public class MUCInterceptor implements MUCEventListener {
 		String messageBody = message.getBody();
 		Type messageType = message.getType();
 		
-		Date date = new Date();
-		
 		if(messageBody != null && messageType == Type.groupchat){
+			
+			Date date = new Date();
+			
+			Element stampElement = message.getChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP);
+			if(stampElement != null){
+				
+				try {
+				
+					String dateString = stampElement.getText();
+					if(dateString != null && dateString != ""){
+						
+						XMPPDateTimeFormat dateFormat = new XMPPDateTimeFormat();
+						date = dateFormat.parseString(dateString);
+					}
+				}
+				catch(ParseException e){}
+			}
+			
+			Element stampEl = message.addChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP);
+			stampEl.addText(XMPPDateTimeFormat.format(date));
 		
 			archiveManager.processMessage(user, roomJID, date, messageBody);
 		}
