@@ -19,6 +19,8 @@ public class MUCHelper
 	public static final String NS_IQ_AWAYDATA = "fc:awaydata";
 	public static final String NS_IQ_ROOM_HISTORY = "fc:room:history";
 	
+	public static final String NS_MESSAGE_STAMP = "fc:stamp";
+	
 	public static final String NS_MESSAGE_NOTIFICATION = "fc:notifications";
 	
 	private static final Log Log = CommonsLogFactory.getLog(MUCHelper.class);
