@@ -61,6 +61,7 @@ public class MUCInterceptor implements MUCEventListener {
 		
 		if(messageBody != null && messageType == Type.groupchat){
 			
+			// Add stamp
 			Date date = new Date();
 			
 			Element stampElement = message.getChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP);
@@ -80,8 +81,13 @@ public class MUCInterceptor implements MUCEventListener {
 			
 			Element stampEl = message.addChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP);
 			stampEl.addText(XMPPDateTimeFormat.format(date));
+			
+			// Add order
+			Long order = archiveManager.getOrCreateRoomData(roomJID).consumeNextMessageOrder();
+			message.addChildElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(order.toString());
 		
-			archiveManager.processMessage(user, roomJID, date, messageBody);
+			// Archive
+			archiveManager.processMessage(user, roomJID, date, order, messageBody);
 		}
 	}
 

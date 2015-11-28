@@ -21,6 +21,8 @@ import com.festcube.openfire.plugin.subplugins.roomhistory.ArchiveManager;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedCubeNotification;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedMessage;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedRecipientCubeNotification;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.IRoomChatMessage;
 import com.festcube.openfire.plugin.xep0059.XmppResultSet;
 
 public class IQFetchRoomHistoryHandler extends IQHandler {
@@ -63,9 +65,9 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 		Element responseEl = reply.setChildElement("roomhistory", MUCHelper.NS_IQ_ROOM_HISTORY);
 		responseEl.addAttribute("room", roomJid.toBareJID());
 		
-		ArrayList<ArchivedMessage> messages = archiveManager.getArchivedMessages(roomJid, resultSet);
+		ArrayList<IRoomChatMessage> messages = archiveManager.getArchivedMessages(roomJid, resultSet);
 		
-		for(ArchivedMessage message : messages){
+		for(IRoomChatMessage message : messages){
 			
 			Element messageEl = responseEl.addElement("message");
 			
@@ -82,9 +84,9 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 				Element bodyEl = messageEl.addElement("body");
 				bodyEl.addText(archivedMessage.getBody());
 			}
-			else if(message instanceof ArchivedCubeNotification){
+			else if(message instanceof ArchivedRecipientCubeNotification){
 				
-				ArchivedCubeNotification notification = (ArchivedCubeNotification)message;
+				ArchivedRecipientCubeNotification notification = (ArchivedRecipientCubeNotification)message;
 				
 				messageEl.addAttribute("from", roomJid.toBareJID());
 				messageEl.addAttribute("to", roomJid.toBareJID());
@@ -97,19 +99,21 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 			
 			Element delayEl = messageEl.addElement("delay", "urn:xmpp:delay");
 			delayEl.addAttribute("stamp", XMPPDateTimeFormat.format(message.getSentDate()));
+			
+			messageEl.addElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(message.getOrder().toString());
 		}
 		
 		
 		if (resultSet != null && messages.size() > 0) {
 			
-			ArchivedMessage firstMessage = messages.get(0);
-			ArchivedMessage lastMessage = messages.get(messages.size() - 1);
+			IRoomChatMessage firstMessage = messages.get(0);
+			IRoomChatMessage lastMessage = messages.get(messages.size() - 1);
 			
-			resultSet.setFirst(XMPPDateTimeFormat.format(firstMessage.getSentDate()));
-			resultSet.setLast(XMPPDateTimeFormat.format(lastMessage.getSentDate()));
+			resultSet.setFirst(firstMessage.getOrder().toString());
+			resultSet.setLast(lastMessage.getOrder().toString());
 			resultSet.setCount(archiveManager.getArchivedMessagesCount(roomJid));
 			
-			if(archiveManager.isFirstMessageInRoom(firstMessage, roomJid)){
+			if(firstMessage.getOrder().longValue() == 0){
 				resultSet.setFirstIndex((long)0);
 			}
 			

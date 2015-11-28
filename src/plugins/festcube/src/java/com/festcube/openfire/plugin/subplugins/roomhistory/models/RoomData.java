@@ -19,15 +19,15 @@ public class RoomData
 {
 	private static final Log Log = CommonsLogFactory.getLog(RoomData.class);
 	private static final String COUNT_MESSAGES = ""
-			+ "SELECT SUM(messageCountSub) as messageCount, MIN(firstMessageDateSub) as firstMessageDate FROM"
+			+ "SELECT SUM(messageCountSub) as messageCount, MAX(lastMessageOrderSub) as lastMessageOrder FROM"
 			+ "("
-			+ "  SELECT COUNT(id) messageCountSub, MIN(sentDate) as firstMessageDateSub"
+			+ "  SELECT COUNT(id) messageCountSub, MAX(`order`) as lastMessageOrderSub"
 			+ "  FROM ofRoomChatHistory "
 			+ "  WHERE roomJID = ?"
 			
 			+ "  UNION ALL"
 			
-			+ "  SELECT COUNT(id) messageCountSub, MIN(sentDate) as firstMessageDateSub"
+			+ "  SELECT COUNT(id) messageCountSub, MAX(`order`) as lastMessageOrderSub"
 			+ "  FROM ofRoomNotificationHistory"
 			+ "  JOIN ofRoomNotificationHistoryRecipients ON ofRoomNotificationHistory.id = ofRoomNotificationHistoryRecipients.roomNotificationHistoryId"
 			+ "  WHERE ofRoomNotificationHistoryRecipients.roomJID = ?"
@@ -35,34 +35,29 @@ public class RoomData
 	
 	private JID roomJID;
 	private Long messageCount;
-	private Long firstMessageDate;
-	private Queue<ArchivedMessage> messageBuffer;
+	private Queue<IRoomChatMessage> messageBuffer;
 	
 	private boolean messageDataLoaded = false;
 	private Long lastRequest;
+	private Long lastMessageOrder;
 	
 	
 	public RoomData(JID roomJID){
 		
 		this.roomJID = roomJID;
-		this.messageBuffer = new ConcurrentLinkedQueue<ArchivedMessage>();
+		this.messageBuffer = new ConcurrentLinkedQueue<IRoomChatMessage>();
 	}
 	
-	public void addMessage(ArchivedMessage message){
+	public void addMessage(IRoomChatMessage message){
 		
 		messageBuffer.add(message);
 		
 		if(messageDataLoaded){
-			
 			messageCount++;
-			
-			if(firstMessageDate == null){
-				firstMessageDate = message.getSentDate().getTime();
-			}
 		}
 	}
 	
-	public ArchivedMessage pollMessage(){
+	public IRoomChatMessage pollMessage(){
 		
 		return messageBuffer.poll();
 	}
@@ -89,28 +84,17 @@ public class RoomData
 		return messageBuffer.isEmpty();
 	}
 	
-	public boolean isFirstMessage(ArchivedMessage message){
+	public boolean isFirstMessage(IRoomChatMessage message){
 		
-		if(!messageDataLoaded){
-			
-			if(loadMessageData()){
-				messageDataLoaded = true;
-			}
-		}
-		
-		if(firstMessageDate == null){
-			return true;
-		}
-		
-		return message.getSentDate().getTime() == firstMessageDate.longValue();
+		return message.getOrder().longValue() == 0;
 	}
 	
-	public ArchivedMessage getOldestMessageInBuffer(){
+	public IRoomChatMessage getOldestMessageInBuffer(){
 		
 		return messageBuffer.peek();
 	}
 	
-	public Queue<ArchivedMessage> getMessageBuffer(){
+	public Queue<IRoomChatMessage> getMessageBuffer(){
 		
 		return messageBuffer;
 	}
@@ -134,6 +118,27 @@ public class RoomData
 		lastRequest = new Date().getTime();
 	}
 	
+	public Long getLastMessageOrder(){
+		
+		if(!messageDataLoaded){
+			
+			if(loadMessageData()){
+				messageDataLoaded = true;
+			}
+		}
+		
+		return lastMessageOrder;
+	}
+	
+	public Long consumeNextMessageOrder(){
+		
+		Long lastOrder = getLastMessageOrder();
+		Long newOrder = lastOrder != null ? new Long(lastOrder.longValue()+1) : new Long(0);
+		
+		lastMessageOrder = newOrder;
+		return newOrder;
+	}
+	
 	
 	private boolean loadMessageData(){
 		
@@ -142,7 +147,7 @@ public class RoomData
 		ResultSet rs = null;
 		
 		Long msgCount = null;
-		Long firstMsgDate = null;
+		Long lastMsgOrder = null;
 		
 		try {
 			
@@ -157,7 +162,7 @@ public class RoomData
 			while(rs.next()){
 				
 				msgCount = rs.getLong("messageCount");
-				firstMsgDate = rs.getLong("firstMessageDate");
+				lastMsgOrder = rs.getLong("lastMessageOrder");
 			}
 		} 
 		catch (SQLException sqle) {
@@ -167,19 +172,12 @@ public class RoomData
 			DbConnectionManager.closeConnection(rs, pstmt, con);
 		}
 		
-		if(msgCount == null || firstMsgDate == null){
+		if(msgCount == null || lastMsgOrder == null){
 			return false;
 		}
 		
-		
+		lastMessageOrder = msgCount > 0 ? lastMsgOrder : null;
 		messageCount = msgCount + messageBuffer.size();
-		
-		if(firstMsgDate > 0){
-			firstMessageDate = firstMsgDate;
-		}
-		else if(messageBuffer.size() > 0){
-			firstMessageDate = messageBuffer.peek().getSentDate().getTime();
-		}
 		
 		return true;
 	}

@@ -24,29 +24,33 @@ import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 
+import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedCubeNotification;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedGlobalCubeNotification;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedMessage;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedRecipientCubeNotification;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.IRoomChatMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.RoomData;
 import com.festcube.openfire.plugin.xep0059.XmppResultSet;
 
 
 public class ArchiveManager 
 {
-	private static final String INSERT_CHAT_MESSAGE = "INSERT INTO ofRoomChatHistory(roomJID, nick, sentDate, body) VALUES (?,?,?,?)";
+	private static final String INSERT_CHAT_MESSAGE = "INSERT INTO ofRoomChatHistory(roomJID, nick, sentDate, `order`, body) VALUES (?,?,?,?,?)";
 	private static final String INSERT_NOTIFICATION_MESSAGE = "INSERT INTO ofRoomNotificationHistory(sentDate, type, content) VALUES (?,?,?)";
-	private static final String INSERT_NOTIFICATION_RECIPIENT = "INSERT INTO ofRoomNotificationHistoryRecipients(roomNotificationHistoryId, roomJID) VALUES (?, ?)";
+	private static final String INSERT_NOTIFICATION_RECIPIENT = "INSERT INTO ofRoomNotificationHistoryRecipients(roomNotificationHistoryId, roomJID, `order`) VALUES (?, ?, ?)";
 	
 	private static final String SELECT_MESSAGES = ""
 			+ "("
-			+ "  SELECT id, sentDate, nick, body, NULL notificationType, NULL notificationContent "
+			+ "  SELECT id, sentDate, `order`, nick, body, NULL notificationType, NULL notificationContent "
 			+ "  FROM ofRoomChatHistory"
 			+ "  WHERE roomJID = ?"
 			+ "  %s"
 			+ ")"
 			+ "UNION"
 			+ "("
-			+ "  SELECT id, sentDate, NULL nick, NULL body, type notificationType, content notificationContent "
+			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, type notificationType, content notificationContent "
 			+ "  FROM ofRoomNotificationHistory"
 			+ "  JOIN ofRoomNotificationHistoryRecipients ON ofRoomNotificationHistory.id = ofRoomNotificationHistoryRecipients.roomNotificationHistoryId"
 			+ "  WHERE ofRoomNotificationHistoryRecipients.roomJID = ?"
@@ -60,7 +64,7 @@ public class ArchiveManager
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 
 	private HashMap<String,RoomData> roomDataMap;
-	private Queue<ArchivedCubeNotification> notificationQueue;
+	private Queue<ArchivedGlobalCubeNotification> notificationQueue;
 	
 	private boolean archivingRunning = false;
 	private boolean cleanRunning = false;
@@ -74,14 +78,14 @@ public class ArchiveManager
 	public ArchiveManager(TaskEngine engine){
 		
 		roomDataMap = new HashMap<String,RoomData>();
-		notificationQueue = new ConcurrentLinkedQueue<ArchivedCubeNotification>();
+		notificationQueue = new ConcurrentLinkedQueue<ArchivedGlobalCubeNotification>();
 		
 		taskEngine = engine;
 	}
 	
-	public void processMessage(JID sender, JID receiver, Date date, String body){
+	public void processMessage(JID sender, JID receiver, Date date, Long order, String body){
 		
-		ArchivedChatMessage message = new ArchivedChatMessage(sender, receiver, date, body);
+		ArchivedChatMessage message = new ArchivedChatMessage(sender, receiver, date, order, body);
 		
 		RoomData roomData = getOrCreateRoomData(receiver);
 		roomData.addMessage(message);
@@ -89,16 +93,18 @@ public class ArchiveManager
 		roomData.updateLastRequest();
 	}
 	
-	public void processNotification(Date date, int type, String content, ArrayList<JID> recipients){
+	public void processNotification(Date date, int type, String content, ArrayList<CubeNotificationRecipient> recipients){
 		
-		ArchivedCubeNotification notification = new ArchivedCubeNotification(date, type, content, recipients);
+		ArchivedGlobalCubeNotification notification = new ArchivedGlobalCubeNotification(date, type, content, recipients);
 		notificationQueue.add(notification);
 		
 		// Add the notification to each room
-		for(JID recipient : recipients){
+		for(CubeNotificationRecipient recipient : recipients){
 			
-			RoomData roomData = getOrCreateRoomData(recipient);
-			roomData.addMessage(notification);
+			ArchivedRecipientCubeNotification recipientNotification = notification.getRecipientNotification(recipient);
+			
+			RoomData roomData = getOrCreateRoomData(recipient.getJid());
+			roomData.addMessage(recipientNotification);
 			
 			roomData.updateLastRequest();
 		}
@@ -138,22 +144,20 @@ public class ArchiveManager
 		roomDataMap = null;
 	}
 	
-	public ArrayList<ArchivedMessage> getArchivedMessages(JID roomJID, XmppResultSet resultSet){
+	public ArrayList<IRoomChatMessage> getArchivedMessages(JID roomJID, XmppResultSet resultSet){
 		
-		XMPPDateTimeFormat dtFormat = new XMPPDateTimeFormat();
-		
-		Date beforeDate = null;
-		Date afterDate = null;
+		Long beforeOrder = null;
+		Long afterOrder = null;
 		Long max = null;
 		
-		ArrayList<ArchivedMessage> results = new ArrayList<ArchivedMessage>();
+		ArrayList<IRoomChatMessage> results = new ArrayList<IRoomChatMessage>();
 		
 		try {
 			
 			if(resultSet != null){
 				
-				beforeDate = resultSet.getBefore() != null ? dtFormat.parseString(resultSet.getBefore()) : null;
-				afterDate = resultSet.getAfter() != null ? dtFormat.parseString(resultSet.getAfter()) : null;
+				beforeOrder = resultSet.getBefore() != null ? Long.valueOf(resultSet.getBefore()) : null;
+				afterOrder = resultSet.getAfter() != null ? Long.valueOf(resultSet.getAfter()) : null;
 				max = resultSet.getMax() != null ? resultSet.getMax() : null;
 			}
 		}
@@ -164,25 +168,21 @@ public class ArchiveManager
 		}
 	
 		RoomData roomData = getOrCreateRoomData(roomJID);
-		ArchivedMessage oldestInBuffer = roomData.getOldestMessageInBuffer();
+		IRoomChatMessage oldestInBuffer = roomData.getOldestMessageInBuffer();
 		
-		if(afterDate != null && beforeDate == null){
+		if(afterOrder != null && beforeOrder == null){
 			
-			// Only afterDate
+			// Only afterOrder
 			
 			// Database
-			ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "ASC", afterDate, null, max != null ? max : 0);
+			ArrayList<IRoomChatMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "ASC", afterOrder, null, max != null ? max : 0);
 			results.addAll(messagesFromDb);
 			
 			// Buffer
 			if(max == null || (long)results.size() < max){
 				
-				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
-				for(ArchivedMessage message : buffer){
-					
-					if(afterDate != null && (message.getSentDate().before(afterDate) || message.getSentDate().equals(afterDate))){
-						continue;
-					}
+				ArrayList<IRoomChatMessage> buffer = new ArrayList<IRoomChatMessage>(roomData.getMessageBuffer());
+				for(IRoomChatMessage message : buffer){
 					
 					results.add(message);
 					
@@ -194,16 +194,16 @@ public class ArchiveManager
 		}
 		else {
 			
-			// beforeDate and afterDate, only beforeDate or none
+			// beforeOrder and afterOrder, only beforeOrder or none
 			
-			if(oldestInBuffer != null && ((beforeDate == null || (beforeDate != null && beforeDate.after(oldestInBuffer.getSentDate()))))){
+			if(oldestInBuffer != null && ((beforeOrder == null || (beforeOrder != null && beforeOrder.compareTo(oldestInBuffer.getOrder()) > 0)))){
 				
-				ArrayList<ArchivedMessage> buffer = new ArrayList<ArchivedMessage>(roomData.getMessageBuffer());
+				ArrayList<IRoomChatMessage> buffer = new ArrayList<IRoomChatMessage>(roomData.getMessageBuffer());
 				Collections.reverse(buffer);
 				
-				for(ArchivedMessage message : buffer){
+				for(IRoomChatMessage message : buffer){
 					
-					if(beforeDate != null && (message.getSentDate().after(beforeDate) || message.getSentDate().equals(beforeDate))){
+					if(beforeOrder != null && (message.getOrder().compareTo(beforeOrder) > 0 || message.getOrder().equals(beforeOrder))){
 						continue;
 					}
 					
@@ -213,7 +213,7 @@ public class ArchiveManager
 						break;
 					}
 					
-					if(afterDate != null && (message.getSentDate().before(afterDate) || message.getSentDate().equals(afterDate))){
+					if(afterOrder != null && (message.getOrder().compareTo(afterOrder) < 0 || message.getSentDate().equals(afterOrder))){
 						break;
 					}
 				}
@@ -222,8 +222,8 @@ public class ArchiveManager
 			if(max == null || (long)results.size() < max){
 				
 				// Get the remaining items from the database
-				Date dbBefore = results.size() > 0 ? results.get(0).getSentDate() : beforeDate;
-				ArrayList<ArchivedMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "DESC", afterDate, dbBefore, max != null ? max - results.size() : 0);
+				Long dbBefore = results.size() > 0 ? results.get(0).getOrder() : beforeOrder;
+				ArrayList<IRoomChatMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "DESC", afterOrder, dbBefore, max != null ? max - results.size() : 0);
 				
 				results.addAll(messagesFromDb);
 			}
@@ -242,16 +242,10 @@ public class ArchiveManager
 		return roomData.getMessageCount();
 	}
 	
-	public boolean isFirstMessageInRoom(ArchivedMessage message, JID roomJID){
-		
-		RoomData roomData = getOrCreateRoomData(roomJID);
-		return roomData.isFirstMessage(message);
-	}
 	
-	
-	private ArrayList<ArchivedMessage> fetchMessagesFromDatabase(JID roomJID, String sortDirection, Date afterDate, Date beforeDate, long limit){
+	private ArrayList<IRoomChatMessage> fetchMessagesFromDatabase(JID roomJID, String sortDirection, Long afterOrder, Long beforeOrder, long limit){
 		
-		ArrayList<ArchivedMessage> results = new ArrayList<ArchivedMessage>();
+		ArrayList<IRoomChatMessage> results = new ArrayList<IRoomChatMessage>();
 		
 		if(sortDirection == null){
 			sortDirection = "ASC";
@@ -267,14 +261,14 @@ public class ArchiveManager
 			
 			String sendDateCondition = "";
 			
-			if(afterDate != null){
-				sendDateCondition += " AND sentDate > ?";
+			if(afterOrder != null){
+				sendDateCondition += " AND `order` > ?";
 			}
-			if(beforeDate != null){
-				sendDateCondition += " AND sentDate < ?";
+			if(beforeOrder != null){
+				sendDateCondition += " AND `order` < ?";
 			}
 			
-			String orderCondition = " ORDER BY sentDate " + sortDirection;
+			String orderCondition = " ORDER BY `order` " + sortDirection;
 			
 			String limitCondition = "";
 			if(limit > 0){
@@ -293,14 +287,14 @@ public class ArchiveManager
 				pstmt.setString(paramCursor, roomJID.toBareJID());
 				paramCursor++;
 				
-				if(afterDate != null){
+				if(afterOrder != null){
 					
-					pstmt.setLong(paramCursor, afterDate.getTime());
+					pstmt.setLong(paramCursor, afterOrder);
 					paramCursor++;
 				}
-				if(beforeDate != null){
+				if(beforeOrder != null){
 					
-					pstmt.setLong(paramCursor, beforeDate.getTime());
+					pstmt.setLong(paramCursor, beforeOrder);
 					paramCursor++;
 				}
 			}
@@ -315,10 +309,10 @@ public class ArchiveManager
 
 			while (rs.next()) {
 				
-				ArchivedMessage message = null;
+				IRoomChatMessage message = null;
 				
 				if(rs.getInt("notificationType") > 0){
-					message = new ArchivedCubeNotification(rs);
+					message = new ArchivedRecipientCubeNotification(rs, roomJID);
 				}
 				else {
 					message = new ArchivedChatMessage(rs, roomJID);
@@ -338,7 +332,7 @@ public class ArchiveManager
 		return results;
 	}
 	
-	private RoomData getOrCreateRoomData(JID roomJID){
+	public RoomData getOrCreateRoomData(JID roomJID){
 		
 		String roomJidString = roomJID.toString();
 		
@@ -378,7 +372,7 @@ public class ArchiveManager
 					PreparedStatement pstmtNotificationRecipient = con.prepareStatement(INSERT_NOTIFICATION_RECIPIENT);
 					ResultSet generatedKeys;
 					
-					ArchivedCubeNotification notification;
+					ArchivedGlobalCubeNotification notification;
 					
 					while ((notification = notificationQueue.poll()) != null) {
 						
@@ -405,10 +399,11 @@ public class ArchiveManager
 							// Recipients
 					        int recipientCounter = 0;
 					        
-							for(JID recipient : notification.getRecipients()){
+							for(CubeNotificationRecipient recipient : notification.getRecipients()){
 								
 								pstmtNotificationRecipient.setLong(1, notification.getId());
-								pstmtNotificationRecipient.setString(2, recipient.toBareJID());
+								pstmtNotificationRecipient.setString(2, recipient.getJid().toBareJID());
+								pstmtNotificationRecipient.setLong(3, recipient.getOrder());
 								
 								if (DbConnectionManager.isBatchUpdatesSupported()) {
 									pstmtNotificationRecipient.addBatch();
@@ -459,7 +454,7 @@ public class ArchiveManager
 					try {
 						
 						pstmtMessage = con.prepareStatement(INSERT_CHAT_MESSAGE);
-						ArchivedMessage message;
+						IRoomChatMessage message;
 						int messageCounter = 0;
 						
 						for (RoomData roomData : roomDataMap.values()) {
@@ -477,7 +472,8 @@ public class ArchiveManager
 									pstmtMessage.setString(1, chatMessage.getRoomJID().toBareJID());
 									pstmtMessage.setString(2, chatMessage.getFromJID().getNode());
 									pstmtMessage.setLong(3, chatMessage.getSentDate().getTime());
-									DbConnectionManager.setLargeTextField(pstmtMessage, 4, chatMessage.getBody());
+									pstmtMessage.setLong(4, chatMessage.getOrder());
+									DbConnectionManager.setLargeTextField(pstmtMessage, 5, chatMessage.getBody());
 									
 									if (DbConnectionManager.isBatchUpdatesSupported()) {
 										pstmtMessage.addBatch();

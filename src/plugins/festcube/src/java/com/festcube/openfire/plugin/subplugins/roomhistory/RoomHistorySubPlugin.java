@@ -11,6 +11,7 @@ import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 
 import com.festcube.openfire.plugin.ISubPlugin;
+import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
 import com.festcube.openfire.plugin.subplugins.roomhistory.handlers.IQFetchRoomHistoryHandler;
 
 public class RoomHistorySubPlugin implements ISubPlugin {
@@ -45,8 +46,13 @@ public class RoomHistorySubPlugin implements ISubPlugin {
     	archiveManager.stop();
     }
     
-    public void reportRoomNotification(int type, String content, ArrayList<JID> recipients)
+    public void reportRoomNotification(int type, String content, ArrayList<CubeNotificationRecipient> recipients)
     {
     	archiveManager.processNotification(new Date(), type, content, recipients);
+    }
+    
+    public Long consumeNextMessageOrder(JID roomJID)
+    {
+    	return archiveManager.getOrCreateRoomData(roomJID).consumeNextMessageOrder();
     }
 }

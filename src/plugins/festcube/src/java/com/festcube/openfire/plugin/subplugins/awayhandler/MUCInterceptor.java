@@ -134,7 +134,7 @@ public class MUCInterceptor implements MUCEventListener {
 		}
 		
 		// Save room last message date
-		archiveManager.updateRoomLastMessageDate(dbConnection, roomJID, new Date());
+		archiveManager.updateRoomLastMessageDateAndIncreaseOrder(dbConnection, roomJID, new Date());
 		
 		DbConnectionManager.closeConnection(dbConnection);
 		

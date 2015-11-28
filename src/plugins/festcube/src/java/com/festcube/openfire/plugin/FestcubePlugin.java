@@ -24,19 +24,19 @@ public class FestcubePlugin implements Plugin
         
 		Log.info("Festcube plugin initialized");
 
-		awayHandler = new AwayHandlerSubPlugin();
 		roomHistory = new RoomHistorySubPlugin();
+		awayHandler = new AwayHandlerSubPlugin();
 		notificationBroadcaster = new NotificationBroadcasterSubPlugin(roomHistory);
 		
+		roomHistory.initialize();
 		awayHandler.initialize();
 		notificationBroadcaster.initialize();
-		roomHistory.initialize();
     }
 
     public void destroyPlugin() {
         
+    	roomHistory.destroy();
     	awayHandler.destroy();
 		notificationBroadcaster.destroy();
-		roomHistory.destroy();
     }
 }

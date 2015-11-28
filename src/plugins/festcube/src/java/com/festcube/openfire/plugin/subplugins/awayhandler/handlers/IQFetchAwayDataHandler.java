@@ -114,12 +114,15 @@ public class IQFetchAwayDataHandler extends IQHandler
 				}
 				
 				// Room status
-				Element lastMessageDateEl = room.addElement("lastmessagedate");
 				RoomStatus roomStatus = roomStatuses.get(roomJid);
+				
+				Element lastMessageDateEl = room.addElement("lastmessagedate");
+				Element lastMessageOrderEl = room.addElement("lastmessageorder");
 				
 				if(roomStatus != null){
 					
 					lastMessageDateEl.addText(XMPPDateTimeFormat.format(roomStatus.getLastMessageDate()));
+					lastMessageOrderEl.addText(roomStatus.getLastMessageOrder().toString());
 				}
 		        
 		        it.remove();

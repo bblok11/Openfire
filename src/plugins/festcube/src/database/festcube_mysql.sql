@@ -8,6 +8,7 @@ CREATE TABLE ofRoomChatHistory (
    roomJID			 		VARCHAR(255)     NOT NULL,
    nick		         		VARCHAR(255)     NOT NULL,
    sentDate          		BIGINT           NOT NULL,
+   `order`					BIGINT			 NOT NULL,
    body              		TEXT,
    
    PRIMARY KEY (`id`),
@@ -26,6 +27,7 @@ CREATE TABLE ofRoomNotificationHistory (
 CREATE TABLE ofRoomNotificationHistoryRecipients (
    roomNotificationHistoryId 	BIGINT unsigned  NOT NULL,
    roomJID			 			VARCHAR(255)     NOT NULL,
+   `order`						BIGINT			 NOT NULL,
    
    PRIMARY KEY (`roomNotificationHistoryId`,`roomJID`),
    INDEX ofRoomNotificationHistoryRecipients_room_indx (roomJID)
@@ -44,6 +46,7 @@ CREATE TABLE ofAwayData (
 CREATE TABLE ofRoomStatus (
    roomJID			 		VARCHAR(255)     NOT NULL,
    lastMessageDate     		BIGINT           NOT NULL,
+   lastMessageOrder			BIGINT			 NOT NULL,
    
    PRIMARY KEY (`roomJID`)
 );

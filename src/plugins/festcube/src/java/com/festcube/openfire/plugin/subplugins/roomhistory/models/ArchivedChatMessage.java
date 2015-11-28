@@ -8,11 +8,12 @@ import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.XMPPServerInfo;
 import org.xmpp.packet.JID;
 
-public class ArchivedChatMessage extends ArchivedMessage
+public class ArchivedChatMessage extends ArchivedMessage implements IRoomChatMessage
 {
 	protected JID fromJID;
 	protected JID roomJID;
 	protected String body;
+	protected Long order;
 
     /**
      * Creates a new archived message.
@@ -22,11 +23,12 @@ public class ArchivedChatMessage extends ArchivedMessage
      * @param sentDate the date the message was sent.
      * @param body the body of the message
      */
-    public ArchivedChatMessage(JID fromJID, JID roomJID, Date sentDate, String body) {
+    public ArchivedChatMessage(JID fromJID, JID roomJID, Date sentDate, Long order, String body) {
 
         this.fromJID = fromJID;
         this.roomJID = roomJID;
         this.sentDate = sentDate;
+        this.order = order;
         this.body = body;
     }
     
@@ -38,6 +40,7 @@ public class ArchivedChatMessage extends ArchivedMessage
     	this.fromJID = new JID(rs.getString("nick"), serverInfo.getXMPPDomain(), null);
     	this.roomJID = roomJID;
     	this.sentDate = new Date(rs.getLong("sentDate"));
+    	this.order = rs.getLong("order");
     	this.body = rs.getString("body");
     }
 
@@ -67,5 +70,9 @@ public class ArchivedChatMessage extends ArchivedMessage
      */
     public String getBody() {
         return body;
+    }
+    
+    public Long getOrder(){
+    	return order;
     }
 }

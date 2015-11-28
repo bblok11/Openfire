@@ -10,13 +10,17 @@ public class RoomStatus
 {
 	private JID roomJID;
 	private Date lastMessageDate;
+	private Long lastMessageOrder;
 	
 	public RoomStatus(ResultSet rs) throws SQLException{
     	
     	this.roomJID = new JID(rs.getString("roomJID"));
     	
-    	long lastMessageLong = rs.getLong("lastMessageDate");
-    	this.lastMessageDate = lastMessageLong != 0 ? new Date(lastMessageLong) : null;
+    	long lastMessageDateLong = rs.getLong("lastMessageDate");
+    	this.lastMessageDate = lastMessageDateLong != 0 ? new Date(lastMessageDateLong) : null;
+    	
+    	long lastMessageOrderLong = rs.getLong("lastMessageOrder");
+    	this.lastMessageOrder = new Long(lastMessageOrderLong);
     }
 	
 	public JID getRoomJID() {
@@ -25,5 +29,9 @@ public class RoomStatus
 
 	public Date getLastMessageDate() {
 		return lastMessageDate;
+	}
+	
+	public Long getLastMessageOrder(){
+		return lastMessageOrder;
 	}
 }

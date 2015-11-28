@@ -23,6 +23,7 @@ import org.xmpp.packet.Message;
 import org.xmpp.packet.Message.Type;
 
 import com.festcube.openfire.plugin.MUCHelper;
+import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
 import com.festcube.openfire.plugin.subplugins.roomhistory.RoomHistorySubPlugin;
 
 
@@ -203,7 +204,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		
 		generatedNotification.setText(dataValue);
 		
-		ArrayList<JID> recipientJids = new ArrayList<JID>();
+		ArrayList<CubeNotificationRecipient> cubeNotificationRecipients = new ArrayList<CubeNotificationRecipient>();
 		
 		for(Element recipientEl : recipients){
 			
@@ -229,10 +230,15 @@ public class IQSendNotificationHandler extends IQHandler {
 						continue;
 					}
 					
+					// Find order
+					Long order = roomHistoryPlugin.consumeNextMessageOrder(jid);
+					
 					// Send message in cube
 					Message newMessage = generatedMessage.createCopy();
 					newMessage.setTo(jid);
 					newMessage.setFrom(jid);
+					
+					newMessage.addChildElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(order.toString());
 					
 					room.send(newMessage);
 					
@@ -260,7 +266,7 @@ public class IQSendNotificationHandler extends IQHandler {
 						}
 					}
 					
-					recipientJids.add(jid);
+					cubeNotificationRecipients.add( new CubeNotificationRecipient(jid, order));
 				}
 			}
 			catch(Exception e){
@@ -271,7 +277,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		// Report to room history
 		if(!isSilent){
 			
-			roomHistoryPlugin.reportRoomNotification(Integer.valueOf(typeValue), dataValue, recipientJids);
+			roomHistoryPlugin.reportRoomNotification(Integer.valueOf(typeValue), dataValue, cubeNotificationRecipients);
 		}
 	}
 

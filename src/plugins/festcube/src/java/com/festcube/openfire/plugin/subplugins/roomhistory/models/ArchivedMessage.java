@@ -2,7 +2,7 @@ package com.festcube.openfire.plugin.subplugins.roomhistory.models;
 
 import java.util.Date;
 
-public class ArchivedMessage 
+public class ArchivedMessage extends Object
 {
     protected Long id;
     protected Date sentDate;
