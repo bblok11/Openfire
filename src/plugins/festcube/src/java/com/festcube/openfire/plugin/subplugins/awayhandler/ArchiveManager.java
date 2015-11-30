@@ -33,7 +33,7 @@ public class ArchiveManager
 	
 	private static final String UPDATE_RESET_MISSED_MESSAGED = "UPDATE ofAwayData SET missedMessages = 0, lastSeenDate = ? WHERE roomJID = ? AND nick = ?";
 	
-	private static final String INSERT_UPDATE_LAST_MESSAGE_DATE_ORDER = "INSERT INTO ofRoomStatus(roomJID, lastMessageDate, lastMessageOrder) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE lastMessageDate = VALUES(lastMessageDate), lastMessageOrder = lastMessageOrder + 1";
+	private static final String INSERT_UPDATE_LAST_MESSAGE_DATE_ORDER = "INSERT INTO ofRoomStatus(roomJID, lastMessageDate, lastMessageOrder) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE lastMessageDate = VALUES(lastMessageDate), lastMessageOrder = VALUES(lastMessageOrder)";
 	private static final String SELECT_ROOM_STATUS = "SELECT * FROM ofRoomStatus WHERE roomJID IN ";
 	
 	
@@ -241,7 +241,7 @@ public class ArchiveManager
 		return success;
 	}
 	
-	public boolean updateRoomLastMessageDateAndIncreaseOrder(Connection con, JID roomJID, Date date)
+	public boolean updateRoomLastMessageDateAndOrder(Connection con, JID roomJID, Date date, Long order)
 	{
 		PreparedStatement pstmt = null;
 		
@@ -250,6 +250,7 @@ public class ArchiveManager
 			pstmt = con.prepareStatement(INSERT_UPDATE_LAST_MESSAGE_DATE_ORDER);
 			pstmt.setString(1, roomJID.toBareJID());
 			pstmt.setLong(2, date.getTime());
+			pstmt.setLong(3, order);
 			
 			return pstmt.execute();
 		} 

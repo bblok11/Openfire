@@ -45,8 +45,8 @@ CREATE TABLE ofAwayData (
 
 CREATE TABLE ofRoomStatus (
    roomJID			 		VARCHAR(255)     NOT NULL,
-   lastMessageDate     		BIGINT           NOT NULL,
-   lastMessageOrder			BIGINT			 NOT NULL,
+   lastMessageDate     		BIGINT,
+   lastMessageOrder			BIGINT,
    
    PRIMARY KEY (`roomJID`)
 );

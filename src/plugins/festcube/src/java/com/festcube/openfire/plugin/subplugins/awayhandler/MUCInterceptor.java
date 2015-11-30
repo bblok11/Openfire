@@ -71,9 +71,8 @@ public class MUCInterceptor implements MUCEventListener {
 			Message message) {
 		
 		MUCRoom room = MUCHelper.getRoom(roomJID);
-		Connection dbConnection = archiveManager.getConnection();
 		
-		if(room == null || dbConnection == null){
+		if(room == null){
 			return;
 		}
 		
@@ -106,38 +105,9 @@ public class MUCInterceptor implements MUCEventListener {
 			}
 		}
 		
-
-		// Update last seen date for participants
-		ArrayList<String> presentNicknames = new ArrayList<String>();
-		
-		for(JID jid : presentJIDs){
-			presentNicknames.add(jid.getNode());
-		}
-		
-		if(presentNicknames.size() > 0){
-			archiveManager.updateLastSeenDate(dbConnection, roomJID, presentNicknames);
-		}
-		
-		
-		if(!isNotification){
-			
-			// Increase missed messages for away users
-			ArrayList<String> awayNicknames = new ArrayList<String>();
-			
-			for(JID jid : awayJIDs){
-				awayNicknames.add(jid.getNode());
-			}
-			
-			if(awayNicknames.size() > 0){
-				archiveManager.increaseMissedMessages(dbConnection, roomJID, awayNicknames);
-			}
-		}
-		
-		// Save room last message date
-		archiveManager.updateRoomLastMessageDateAndIncreaseOrder(dbConnection, roomJID, new Date());
-		
-		DbConnectionManager.closeConnection(dbConnection);
-		
+		// Archive in thread
+		Long messageOrder = Long.valueOf(message.getChildElement("order", MUCHelper.NS_MESSAGE_ORDER).getText());
+		new Thread(new ArchivingTask(roomJID, presentJIDs, awayJIDs, messageOrder, !isNotification)).start();
 		
 		if(!isNotification){
 			
@@ -175,5 +145,61 @@ public class MUCInterceptor implements MUCEventListener {
 
 		//
 	}
+	
+	
+	private class ArchivingTask implements Runnable {
 
+		private JID roomJID;
+		private ArrayList<JID> presentJIDs;
+		private ArrayList<JID> awayJIDs;
+		private boolean increaseMissedMessages;
+		private Long messageOrder;
+		
+		public ArchivingTask(JID roomJID, ArrayList<JID> presentJIDs, ArrayList<JID> awayJIDs, Long messageOrder, boolean increaseMissedMessages)
+		{
+			super();
+			
+			this.roomJID = roomJID;
+			this.presentJIDs = presentJIDs;
+			this.awayJIDs = awayJIDs;
+			this.increaseMissedMessages = increaseMissedMessages;
+			this.messageOrder = messageOrder;
+		}
+		
+		public void run() {
+			
+			Connection dbConnection = archiveManager.getConnection();
+			
+			// Update last seen date for participants
+			ArrayList<String> presentNicknames = new ArrayList<String>();
+			
+			for(JID jid : presentJIDs){
+				presentNicknames.add(jid.getNode());
+			}
+			
+			if(presentNicknames.size() > 0){
+				archiveManager.updateLastSeenDate(dbConnection, roomJID, presentNicknames);
+			}
+			
+			
+			if(!increaseMissedMessages){
+				
+				// Increase missed messages for away users
+				ArrayList<String> awayNicknames = new ArrayList<String>();
+				
+				for(JID jid : awayJIDs){
+					awayNicknames.add(jid.getNode());
+				}
+				
+				if(awayNicknames.size() > 0){
+					archiveManager.increaseMissedMessages(dbConnection, roomJID, awayNicknames);
+				}
+			}
+			
+			// Save room last message date
+			archiveManager.updateRoomLastMessageDateAndOrder(dbConnection, roomJID, new Date(), messageOrder);
+			
+			DbConnectionManager.closeConnection(dbConnection);
+		}
+	}
 }
