@@ -10,6 +10,8 @@ import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.jivesoftware.openfire.muc.MUCRoom;
+import org.jivesoftware.openfire.user.UserNameManager;
+import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
@@ -46,10 +48,17 @@ public class PushNotificationManager
 		pushManager.start();
 	}
 	
-	public void send(MUCRoom room, Message message, ArrayList<JID> recipients){
+	public void send(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients) {
 		
 		// Build payload
-		String body = room.getDescription() + ": " + message.getBody();
+		String userName = "";
+		try {
+			userName = UserNameManager.getUserName(senderJID, "");
+		} catch (UserNotFoundException e1) {
+			// Ignore
+		}
+		
+		String body = userName + " in " + room.getDescription() + ":\n" + message.getBody();
 		
 		final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
 		payloadBuilder.setAlertBody(body);

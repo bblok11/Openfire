@@ -137,7 +137,7 @@ public class MUCInterceptor implements MUCEventListener {
 		}
 		
 		// Send push notifications
-		pushNotifications.sendNotifications(room, message, awayJIDs);
+		pushNotifications.sendNotifications(room, user, message, awayJIDs);
 	}
 
 	@Override
