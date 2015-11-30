@@ -16,6 +16,8 @@ import org.xmpp.packet.JID;
 public class MUCHelper 
 {
 	public static final String NS_IQ_SEND_NOTIFICATIONS = "fc:sendnotifications";
+	public static final String NS_IQ_MOBILE_DEVICE = "fc:mobiledevice";
+	
 	public static final String NS_IQ_AWAYDATA = "fc:awaydata";
 	public static final String NS_IQ_ROOM_HISTORY = "fc:room:history";
 	

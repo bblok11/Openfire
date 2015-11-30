@@ -7,6 +7,7 @@ import org.jivesoftware.util.log.util.CommonsLogFactory;
 
 import com.festcube.openfire.plugin.ISubPlugin;
 import com.festcube.openfire.plugin.subplugins.awayhandler.handlers.IQFetchAwayDataHandler;
+import com.festcube.openfire.plugin.subplugins.pushnotifications.PushNotificationsSubPlugin;
 
 
 public class AwayHandlerSubPlugin implements ISubPlugin {
@@ -18,6 +19,14 @@ public class AwayHandlerSubPlugin implements ISubPlugin {
 	
 	private ArchiveManager archiveManager;
 	
+	private PushNotificationsSubPlugin pushNotifications;
+	
+	
+	public AwayHandlerSubPlugin(PushNotificationsSubPlugin pushNotifications){
+		
+		this.pushNotifications = pushNotifications;
+	}
+	
 	
 	public void initialize() {
         
@@ -26,7 +35,7 @@ public class AwayHandlerSubPlugin implements ISubPlugin {
 		archiveManager = new ArchiveManager();
 		
 		// MUCInterceptor intercepts messages, so potential missed message counts can be increased
-		mucInterceptor = new MUCInterceptor(archiveManager);
+		mucInterceptor = new MUCInterceptor(archiveManager, pushNotifications);
 		MUCEventDispatcher.addListener(mucInterceptor);
 		
 		// IQ Handler for returning the away data

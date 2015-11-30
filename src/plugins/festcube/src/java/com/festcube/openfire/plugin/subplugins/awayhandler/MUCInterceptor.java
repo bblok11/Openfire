@@ -17,15 +17,18 @@ import org.xmpp.packet.Message;
 import org.xmpp.packet.Message.Type;
 
 import com.festcube.openfire.plugin.MUCHelper;
+import com.festcube.openfire.plugin.subplugins.pushnotifications.PushNotificationsSubPlugin;
 
 
 public class MUCInterceptor implements MUCEventListener {
 	
 	private ArchiveManager archiveManager;
+	private PushNotificationsSubPlugin pushNotifications;
 	
-	public MUCInterceptor(ArchiveManager manager){
+	public MUCInterceptor(ArchiveManager manager, PushNotificationsSubPlugin pushNotifications){
 		
-		archiveManager = manager;
+		this.archiveManager = manager;
+		this.pushNotifications = pushNotifications;
 	}
 	
 	@Override
@@ -132,6 +135,9 @@ public class MUCInterceptor implements MUCEventListener {
 				messageRouter.route(awayMessage);
 			}
 		}
+		
+		// Send push notifications
+		pushNotifications.sendNotifications(room, message, awayJIDs);
 	}
 
 	@Override
