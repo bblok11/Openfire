@@ -4,7 +4,9 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 
+import org.apache.commons.logging.Log;
 import org.dom4j.Element;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.MessageRouter;
@@ -12,15 +14,19 @@ import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MUCEventListener;
 import org.jivesoftware.openfire.muc.MUCRole;
 import org.jivesoftware.openfire.muc.MUCRoom;
+import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
 import org.xmpp.packet.Message.Type;
+import org.xmpp.packet.Presence;
+import org.xmpp.packet.Presence.Show;
 
 import com.festcube.openfire.plugin.MUCHelper;
 import com.festcube.openfire.plugin.subplugins.pushnotifications.PushNotificationsSubPlugin;
 
-
-public class MUCInterceptor implements MUCEventListener {
+public class MUCInterceptor implements MUCEventListener 
+{
+	private static final Log Log = CommonsLogFactory.getLog(MUCInterceptor.class);
 	
 	private ArchiveManager archiveManager;
 	private PushNotificationsSubPlugin pushNotifications;
@@ -96,6 +102,7 @@ public class MUCInterceptor implements MUCEventListener {
 		
 		// Remove online + present participants
 		Collection<MUCRole> participants = room.getParticipants();
+		HashMap<JID, MUCRole> jidRoles = new HashMap<JID, MUCRole>();
 		
 		for(MUCRole participant : participants){
 			
@@ -106,6 +113,8 @@ public class MUCInterceptor implements MUCEventListener {
 				awayJIDs.remove(jid);
 				presentJIDs.add(jid);
 			}
+			
+			jidRoles.put(jid, participant);
 		}
 		
 		// Archive in thread
@@ -137,7 +146,28 @@ public class MUCInterceptor implements MUCEventListener {
 		}
 		
 		// Send push notifications
-		pushNotifications.sendNotifications(room, user, message, awayJIDs);
+		ArrayList<JID> pushReceiverJIDs = new ArrayList<JID>();
+		for(JID jid : roomMembers){
+			
+			if(awayJIDs.contains(jid)){
+				
+				// User is not in room, add to receivers
+				pushReceiverJIDs.add(jid);
+			}
+			else {
+				
+				// User is in room, check presence status
+				MUCRole role = jidRoles.get(jid);
+				Presence presence = role.getPresence();
+				Presence.Show presenceShow = presence != null ? presence.getShow() : Presence.Show.chat;
+				
+				if(presenceShow != null && !presence.getShow().equals(Presence.Show.chat)){
+					pushReceiverJIDs.add(jid);
+				}
+			}
+		}
+		
+		pushNotifications.sendNotifications(room, user, message, pushReceiverJIDs);
 	}
 
 	@Override

@@ -25,9 +25,7 @@ public class IQUpdateDeviceHandler extends IQHandler {
 	public IQUpdateDeviceHandler(ArchiveManager archiveManager) {
 		
 		super("Push notifications update");
-		
-		Log.info("INIT Update");
-		
+				
 		this.info = new IQHandlerInfo("updatedevice", MUCHelper.NS_IQ_MOBILE_DEVICE_UPDATE);
 		this.archiveManager = archiveManager;
 	}

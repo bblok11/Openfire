@@ -25,9 +25,7 @@ public class IQDeleteDeviceHandler extends IQHandler {
 	public IQDeleteDeviceHandler(ArchiveManager archiveManager) {
 		
 		super("Push notifications delete");
-		
-		Log.info("INIT Delete");
-		
+				
 		this.info = new IQHandlerInfo("deletedevice", MUCHelper.NS_IQ_MOBILE_DEVICE_DELETE);
 		this.archiveManager = archiveManager;
 	}
