@@ -69,22 +69,18 @@ public class PushNotificationManager
 		
 		for(JID recipient : recipients){
 			
-			ArrayList<UserMobileDevice> devices = archiveManager.getDevicesByUsername(recipient.getNode());
+			ArrayList<String> pushTokens = archiveManager.getPushTokensByUsername(recipient.getNode());
 			
-			for(UserMobileDevice device : devices){
+			for(String pushToken : pushTokens){
 			
-				if(device.getPushToken() == null){
-					continue;
-				}
-				
 				try {
 					
-					byte[] token = TokenUtil.tokenStringToByteArray(device.getPushToken());
+					byte[] token = TokenUtil.tokenStringToByteArray(pushToken);
 					pushManager.getQueue().put(new SimpleApnsPushNotification(token, payload));
 				}
 				catch(Exception e){
 					
-					Log.error("Unable to send notification to " + device.getPushToken(), e);
+					Log.error("Unable to send notification to " + pushToken, e);
 				}
 			}
 		}

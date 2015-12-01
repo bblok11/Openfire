@@ -28,15 +28,16 @@ public class ArchiveManager
 	private static final String INSERT_UPDATE_MOBILE_DEVICE = "INSERT INTO ofUserMobileDevices(username, deviceIdentifier, devicePlatformId, deviceModel, pushToken, creationDate, modificationDate) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE deviceModel = VALUES(deviceModel), pushToken = VALUES(pushToken), modificationDate = VALUES(modificationDate)";
 	private static final String DELETE_MOBILE_DEVICE = "DELETE FROM ofUserMobileDevices WHERE username=? AND deviceIdentifier=? AND devicePlatformId=?";
 	private static final String SELECT_MOBILE_DEVICES_FROM_USER = "SELECT * FROM ofUserMobileDevices WHERE username = ?";
+	private static final String SELECT_PUSH_TOKENS_FROM_USER = "SELECT pushToken FROM ofUserMobileDevices WHERE username = ? AND pushToken IS NOT NULL";
 	
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 	
-	Cache<String, ArrayList<UserMobileDevice>> devicesCache;
+	Cache<String, ArrayList<String>> pushTokensCache;
 	
 	
 	public ArchiveManager(){
 		
-		this.devicesCache = CacheFactory.createCache("User Devices");
+		this.pushTokensCache = CacheFactory.createCache("User Devices push tokens");
 	}
 	
 	public boolean updateDevice(String username, String deviceIdentifier, Integer devicePlatformId, String deviceModel, String pushToken)
@@ -107,10 +108,6 @@ public class ArchiveManager
 	
 	public ArrayList<UserMobileDevice> getDevicesByUsername(String username)
 	{
-//		if(devicesCache.containsKey(username)){
-//			return devicesCache.get(username);
-//		}
-		
 		ArrayList<UserMobileDevice> results = new ArrayList<UserMobileDevice>();
 			
 		Connection con = null;
@@ -131,8 +128,6 @@ public class ArchiveManager
 				UserMobileDevice device = new UserMobileDevice(rs);
 				results.add(device);
 			}
-			
-			devicesCache.put(username, results);
 		} 
 		catch (SQLException sqle) {
 			Log.error("Error selecting devices", sqle);
@@ -144,9 +139,48 @@ public class ArchiveManager
 		return results;
 	}
 	
+	public ArrayList<String> getPushTokensByUsername(String username)
+	{
+		if(pushTokensCache.containsKey(username)){
+			return pushTokensCache.get(username);
+		}
+		
+		ArrayList<String> results = new ArrayList<String>();
+			
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		
+		try {
+			
+			con = DbConnectionManager.getConnection();
+
+			pstmt = con.prepareStatement(SELECT_PUSH_TOKENS_FROM_USER);
+			pstmt.setString(1, username);
+
+			rs = pstmt.executeQuery();
+
+			while (rs.next()) {
+				
+				String pushToken = rs.getString("pushToken");
+				results.add(pushToken);
+			}
+			
+			pushTokensCache.put(username, results);
+		} 
+		catch (SQLException sqle) {
+			Log.error("Error selecting push tokens", sqle);
+		} 
+		finally {
+			DbConnectionManager.closeConnection(rs, pstmt, con);
+		}
+		
+		return results;
+	}
+	
 	public void invalidateDevicesFromUsername(String username)
 	{
-		devicesCache.remove(username);
+		pushTokensCache.remove(username);
 	}
 	
 	
