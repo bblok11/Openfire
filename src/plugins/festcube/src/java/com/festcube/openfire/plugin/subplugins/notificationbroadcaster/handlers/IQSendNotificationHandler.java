@@ -73,13 +73,13 @@ public class IQSendNotificationHandler extends IQHandler {
 	@Override
 	public IQ handleIQ(IQ packet) throws UnauthorizedException {
 		
+		Element sendEl = packet.getChildElement();
+		
 		if(!allowedUsers.contains(packet.getFrom().asBareJID())){
 			
 			Log.info("Not-allowed user tried to send notifications: " + packet.getFrom().toString());
 			throw new UnauthorizedException();
 		}
-		
-		Element sendEl = packet.getChildElement();
 		
 		// User notifications
 		

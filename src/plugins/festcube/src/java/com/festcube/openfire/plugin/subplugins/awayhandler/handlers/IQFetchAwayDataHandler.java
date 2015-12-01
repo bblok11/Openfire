@@ -42,14 +42,13 @@ public class IQFetchAwayDataHandler extends IQHandler
 	@Override
 	public IQ handleIQ(IQ packet) throws UnauthorizedException {
 		
+		Element awayDataEl = packet.getChildElement();
 		IQ reply = IQ.createResultIQ(packet);
 		
 		JID from = packet.getFrom();
 		String nick = from.getNode();
 		
 		HashMap<JID, AwayData> awayData = null;
-		
-		Element awayDataEl = packet.getChildElement();
 		
 		Element syncEl = awayDataEl.element("sync");
 		

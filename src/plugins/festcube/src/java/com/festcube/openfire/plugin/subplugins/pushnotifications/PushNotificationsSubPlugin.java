@@ -12,15 +12,17 @@ import java.util.ArrayList;
 import org.apache.commons.logging.Log;
 
 import com.festcube.openfire.plugin.ISubPlugin;
-import com.festcube.openfire.plugin.subplugins.pushnotifications.handlers.IQUpdateDeviceInfoHandler;
+import com.festcube.openfire.plugin.subplugins.pushnotifications.handlers.IQDeleteDeviceHandler;
+import com.festcube.openfire.plugin.subplugins.pushnotifications.handlers.IQUpdateDeviceHandler;
 
 public class PushNotificationsSubPlugin implements ISubPlugin {
 
 	private static final Log Log = CommonsLogFactory.getLog(PushNotificationsSubPlugin.class);
 	
-	private IQUpdateDeviceInfoHandler updateHandler;
-	private PushNotificationManager pushManager;
+	private IQUpdateDeviceHandler updateHandler;
+	private IQDeleteDeviceHandler deleteHandler;
 	
+	private PushNotificationManager pushManager;
 	private ArchiveManager archiveManager;
 	
 	
@@ -42,15 +44,19 @@ public class PushNotificationsSubPlugin implements ISubPlugin {
 			Log.error("Error while initializing PushNotificationManager: ", e);
 		}
 
-		// IQ Handler for broadcasting the notifications
-		updateHandler = new IQUpdateDeviceInfoHandler(archiveManager);
+		// IQ Handlers
+		updateHandler = new IQUpdateDeviceHandler(archiveManager);
 		XMPPServer.getInstance().getIQRouter().addHandler(updateHandler);
+		
+		deleteHandler = new IQDeleteDeviceHandler(archiveManager);
+		XMPPServer.getInstance().getIQRouter().addHandler(deleteHandler);
 	}
 
 	@Override
 	public void destroy() {
 
     	XMPPServer.getInstance().getIQRouter().removeHandler(updateHandler);
+    	XMPPServer.getInstance().getIQRouter().removeHandler(deleteHandler);
     	
     	if(pushManager != null){
     		pushManager.destroy();

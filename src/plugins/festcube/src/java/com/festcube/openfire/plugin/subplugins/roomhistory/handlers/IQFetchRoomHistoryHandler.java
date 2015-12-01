@@ -44,8 +44,8 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 	@Override
 	public IQ handleIQ(IQ packet) throws UnauthorizedException {
 		
-		IQ reply = IQ.createResultIQ(packet);
 		Element roomHistoryEl = packet.getChildElement();
+		IQ reply = IQ.createResultIQ(packet);
 		
 		JID roomJid = new JID(roomHistoryEl.attributeValue("room"));
 		JID userJid = packet.getFrom();
