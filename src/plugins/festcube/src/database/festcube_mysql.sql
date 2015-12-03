@@ -9,20 +9,20 @@ CREATE TABLE ofRoomChatHistory (
    `nick`		         	VARCHAR(255)     NOT NULL,
    `sentDate`          		BIGINT           NOT NULL,
    `order`					BIGINT			 NOT NULL,
-   `body`              		TEXT,
+   `body`              		TEXT COLLATE utf8mb4_unicode_ci,
    
    PRIMARY KEY (`id`),
    INDEX ofRoomChatHistory_room_indx (`roomJID`)
-);
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `ofRoomNotificationHistory` (
    `id`    			 		BIGINT unsigned  NOT NULL AUTO_INCREMENT,
    `sentDate`          		BIGINT           NOT NULL,
    `type` 					INT,
-   `content`				TEXT,
+   `content`				TEXT COLLATE utf8mb4_unicode_ci,
    
    PRIMARY KEY (`id`)
-);
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `ofRoomNotificationHistoryRecipients` (
    `roomNotificationHistoryId` 	BIGINT unsigned  NOT NULL,
