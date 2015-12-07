@@ -3,6 +3,7 @@ package com.festcube.openfire.plugin.subplugins.pushnotifications;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MUCRoom;
 import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.TaskEngine;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
@@ -38,7 +39,7 @@ public class PushNotificationsSubPlugin implements ISubPlugin {
 		boolean debugMode = JiveGlobals.getBooleanProperty("plugin.festcube.pushnotifications.debug", false);
 		
 		try {
-			pushManager = new PushNotificationManager(archiveManager, certificatePath, certificatePassword, debugMode);
+			pushManager = new PushNotificationManager(TaskEngine.getInstance(), archiveManager, certificatePath, certificatePassword, debugMode);
 		} catch (Exception e) {
 			
 			Log.error("Error while initializing PushNotificationManager: ", e);
@@ -50,6 +51,8 @@ public class PushNotificationsSubPlugin implements ISubPlugin {
 		
 		deleteHandler = new IQDeleteDeviceHandler(archiveManager);
 		XMPPServer.getInstance().getIQRouter().addHandler(deleteHandler);
+		
+		pushManager.start();
 	}
 
 	@Override
