@@ -10,11 +10,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.TimerTask;
 
+import javax.net.ssl.SSLHandshakeException;
+
 import org.apache.commons.logging.Log;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MUCRoom;
 import org.jivesoftware.openfire.user.UserNameManager;
 import org.jivesoftware.openfire.user.UserNotFoundException;
+import org.jivesoftware.util.EmailService;
 import org.jivesoftware.util.JiveConstants;
+import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.TaskEngine;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
@@ -24,6 +29,7 @@ import com.festcube.openfire.plugin.subplugins.pushnotifications.models.UserMobi
 import com.relayrides.pushy.apns.ApnsEnvironment;
 import com.relayrides.pushy.apns.ExpiredToken;
 import com.relayrides.pushy.apns.ExpiredTokenListener;
+import com.relayrides.pushy.apns.FailedConnectionListener;
 import com.relayrides.pushy.apns.PushManager;
 import com.relayrides.pushy.apns.PushManagerConfiguration;
 import com.relayrides.pushy.apns.util.ApnsPayloadBuilder;
@@ -58,6 +64,7 @@ public class PushNotificationManager
 			        	"FestcubePushManager");
 		
 		pushManager.registerExpiredTokenListener(new FestcubeExpiredTokenListener());
+		pushManager.registerFailedConnectionListener(new FestcubeFailedConnectionListener());
 	}
 	
 	public void send(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients) {
@@ -130,6 +137,28 @@ public class PushNotificationManager
 		}
 	}
 	
+	private void sendAlertEmail(String body)
+	{
+		String toEmail = JiveGlobals.getProperty("plugin.festcube.alertEmail", "serveralerts@festcube.com");
+		JID adminJID = null;
+		
+		try {
+			adminJID = XMPPServer.getInstance().getAdmins().iterator().next();
+		}
+		catch(Exception e){
+			//
+		}
+		
+		EmailService.getInstance().sendMessage(
+				"Admin", 
+				toEmail, 
+				"Openfire", 
+				adminJID != null ? adminJID.toBareJID() : toEmail, 
+				"Push alert", 
+				body, 
+				body);
+	}
+	
 	
 	private class FestcubeExpiredTokenListener implements ExpiredTokenListener<SimpleApnsPushNotification>
 	{
@@ -160,5 +189,19 @@ public class PushNotificationManager
 	        	}
 	        }
 	    }
+	}
+	
+	private class FestcubeFailedConnectionListener implements FailedConnectionListener<SimpleApnsPushNotification>
+	{
+		@Override
+		public void handleFailedConnection(PushManager<? extends SimpleApnsPushNotification> pushManager, Throwable cause) {
+			
+			if (cause instanceof SSLHandshakeException) {
+			
+				String body = "Push connection failed: \n" + cause.toString();
+				sendAlertEmail(body);
+			}
+		}
+		
 	}
 }
