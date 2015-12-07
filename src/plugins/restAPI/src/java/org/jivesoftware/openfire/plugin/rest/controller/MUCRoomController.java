@@ -453,19 +453,25 @@ public class MUCRoomController {
 	 *            the room name
 	 * @param jid
 	 *            the jid
+	 * @param nick
+	 *            the reserved nickname
 	 * @throws ServiceException
 	 *             the service exception
 	 */
-	public void addMember(String serviceName, String roomName, String jid) throws ServiceException {
+	public void addMember(String serviceName, String roomName, String jid, String nick) throws ServiceException {
 		MUCRoom room = XMPPServer.getInstance().getMultiUserChatManager().getMultiUserChatService(serviceName)
 				.getChatRoom(roomName.toLowerCase());
 		try {
-			room.addMember(UserUtils.checkAndGetJID(jid), null, room.getRole());
+			room.addMember(UserUtils.checkAndGetJID(jid), nick, room.getRole());
 		} catch (ForbiddenException e) {
 			throw new ServiceException("Could not add member", jid, ExceptionType.NOT_ALLOWED, Response.Status.FORBIDDEN, e);
 		} catch (ConflictException e) {
 			throw new ServiceException("Could not add member", jid, ExceptionType.NOT_ALLOWED, Response.Status.FORBIDDEN, e);
 		}
+	}
+	
+	public void addMember(String serviceName, String roomName, String jid) throws ServiceException {
+		addMember(serviceName, roomName, jid, null);
 	}
 
 	/**
@@ -477,14 +483,16 @@ public class MUCRoomController {
 	 *            the room name
 	 * @param jid
 	 *            the jid
+	 * @param nick
+	 *            the reserved nickname
 	 * @throws ServiceException
 	 *             the service exception
 	 */
-	public void addOutcast(String serviceName, String roomName, String jid) throws ServiceException {
+	public void addOutcast(String serviceName, String roomName, String jid, String nick) throws ServiceException {
 		MUCRoom room = XMPPServer.getInstance().getMultiUserChatManager().getMultiUserChatService(serviceName)
 				.getChatRoom(roomName.toLowerCase());
 		try {
-			room.addOutcast(UserUtils.checkAndGetJID(jid), null, room.getRole());
+			room.addOutcast(UserUtils.checkAndGetJID(jid), nick, room.getRole());
 		} catch (NotAllowedException e) {
 			throw new ServiceException("Could not add outcast", jid, ExceptionType.NOT_ALLOWED, Response.Status.FORBIDDEN, e);
 		} catch (ForbiddenException e) {
@@ -492,6 +500,10 @@ public class MUCRoomController {
 		} catch (ConflictException e) {
 			throw new ServiceException("Could not add outcast", jid, ExceptionType.NOT_ALLOWED, Response.Status.CONFLICT, e);
 		}
+	}
+	
+	public void addOutcast(String serviceName, String roomName, String jid) throws ServiceException {
+		addOutcast(serviceName, roomName, jid, null);
 	}
 
 	/**

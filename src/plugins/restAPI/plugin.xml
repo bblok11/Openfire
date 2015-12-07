@@ -2,9 +2,9 @@
 
 <plugin>
     <class>org.jivesoftware.openfire.plugin.rest.RESTServicePlugin</class>
-    <name>REST API</name>
+    <name>REST API - Festcube additions</name>
     <description>Allows administration over a RESTful API.</description>
-    <author>Roman Soldatow</author>
+    <author>Roman Soldatow and Festcube</author>
     <version>1.0.2</version>
     <date>03/03/2015</date>
     <minServerVersion>3.9.0</minServerVersion>

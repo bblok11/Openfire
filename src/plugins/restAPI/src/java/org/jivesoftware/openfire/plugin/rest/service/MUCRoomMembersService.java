@@ -18,8 +18,10 @@ public class MUCRoomMembersService {
 	@POST
 	@Path("/{jid}")
 	public Response addMUCRoomMember(@DefaultValue("conference") @QueryParam("servicename") String serviceName,
-			@PathParam("jid") String jid, @PathParam("roomName") String roomName) throws ServiceException {
-		MUCRoomController.getInstance().addMember(serviceName, roomName, jid);
+			@PathParam("jid") String jid, 
+			@PathParam("roomName") String roomName,
+			@QueryParam("nickname") String nickname) throws ServiceException {
+		MUCRoomController.getInstance().addMember(serviceName, roomName, jid, nickname);
 		return Response.status(Status.CREATED).build();
 	}
 
