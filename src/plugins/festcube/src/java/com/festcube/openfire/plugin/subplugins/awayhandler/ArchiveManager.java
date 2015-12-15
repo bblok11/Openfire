@@ -11,6 +11,9 @@ import java.util.HashMap;
 
 import org.apache.commons.logging.Log;
 import org.jivesoftware.database.DbConnectionManager;
+import org.jivesoftware.util.JiveConstants;
+import org.jivesoftware.util.cache.Cache;
+import org.jivesoftware.util.cache.CacheFactory;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 
@@ -22,6 +25,7 @@ public class ArchiveManager
 {
 	private static final String SELECT_SYNC = "SELECT * FROM ofAwayData WHERE nick = ? AND (missedMessages > 0 OR roomJID IN %s)";
 	private static final String SELECT_BY_NICK = "SELECT * FROM ofAwayData WHERE nick = ?";
+	private static final String SELECT_MISSED_MESSAGES_BY_NICKS = "SELECT nick, SUM(missedMessages) as totalMissedMessages FROM ofAwayData WHERE nick IN %s GROUP BY nick";
 	
 	private static final String INSERT_UPDATE_LAST_SEEN_1 = "INSERT INTO ofAwayData(roomJID, nick, missedMessages, lastSeenDate) VALUES ";
 	private static final String INSERT_UPDATE_LAST_SEEN_VALUES = "(?,?,0,?)";
@@ -36,9 +40,16 @@ public class ArchiveManager
 	private static final String INSERT_UPDATE_LAST_MESSAGE_DATE_ORDER = "INSERT INTO ofRoomStatus(roomJID, lastMessageDate, lastMessageOrder) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE lastMessageDate = VALUES(lastMessageDate), lastMessageOrder = VALUES(lastMessageOrder)";
 	private static final String SELECT_ROOM_STATUS = "SELECT * FROM ofRoomStatus WHERE roomJID IN ";
 	
-	
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 	
+	Cache<String, Integer> userMissedMessagesCache;
+	
+	
+	public ArchiveManager()
+	{
+		this.userMissedMessagesCache = CacheFactory.createCache("User missed messages");
+		this.userMissedMessagesCache.setMaxLifetime(JiveConstants.HOUR);
+	}
 	
 	public HashMap<JID, AwayData> getAwayDataByNick(String nick)
 	{
@@ -69,6 +80,88 @@ public class ArchiveManager
 		} 
 		finally {
 			DbConnectionManager.closeConnection(rs, pstmt, con);
+		}
+		
+		return results;
+	}
+	
+	public HashMap<String, Integer> getMissedMessagesByNicks(ArrayList<String> nicknames)
+	{
+		HashMap<String, Integer> results = new HashMap<String, Integer>();
+		
+		if(nicknames.size() == 0){
+			return results;
+		}
+		
+		@SuppressWarnings("unchecked")
+		ArrayList<String> requestNicknames = (ArrayList<String>) nicknames.clone();
+		
+		// Try from cache
+		for(String nick : nicknames){
+			
+			if(this.userMissedMessagesCache.containsKey(nick)){
+				
+				results.put(nick, this.userMissedMessagesCache.get(nick));
+				requestNicknames.remove(nick);
+			}
+		}
+			
+		if(requestNicknames.size() > 0){
+			
+			Connection con = null;
+			PreparedStatement pstmt = null;
+			ResultSet rs = null;
+			
+			try {
+				
+				con = DbConnectionManager.getConnection();
+				
+				int nickCounter = 0;
+				String nicksInQuery = "(";
+				
+				for(String nick : requestNicknames){
+					
+					if(nickCounter > 0){
+						nicksInQuery += ",";
+					}
+					
+					nicksInQuery += "?";
+				
+					nickCounter++;
+				}
+				
+				nicksInQuery += ")";
+				
+				String sql = String.format(SELECT_MISSED_MESSAGES_BY_NICKS, nicksInQuery);
+				
+				pstmt = con.prepareStatement(sql);
+				
+				int argCounter = 1;
+				for(String nick : requestNicknames){
+					
+					pstmt.setString(argCounter, nick);
+					argCounter++;
+				}
+				
+				rs = pstmt.executeQuery();
+	
+				while (rs.next()) {
+					
+					String currentNick = rs.getString("nick");
+					Integer currentMissedMessages = rs.getInt("totalMissedMessages");
+					
+					results.put(currentNick, currentMissedMessages);
+					
+					this.userMissedMessagesCache.put(currentNick, currentMissedMessages);
+				}
+				
+			} 
+			catch (SQLException sqle) {
+				Log.error("Error selecting missed messages", sqle);
+			} 
+			finally {
+				DbConnectionManager.closeConnection(rs, pstmt, con);
+			}
 		}
 		
 		return results;
@@ -231,11 +324,25 @@ public class ArchiveManager
 				argCounter += 2;
 			}
 			
-			success = pstmt.execute();
+			pstmt.execute();
+			success = true;
 		}
 		catch (SQLException sqle) {
 			
 			Log.error("Error increasing missed messages", sqle);
+		}
+		
+		// Increase in cache
+		if(success == true){
+			
+			for(String nick : nicknames){
+				
+				if(this.userMissedMessagesCache.containsKey(nick)){
+					
+					Integer currentMissedMessages = this.userMissedMessagesCache.get(nick);
+					this.userMissedMessagesCache.put(nick, currentMissedMessages+1);
+				}
+			}
 		}
 		
 		return success;
@@ -252,7 +359,8 @@ public class ArchiveManager
 			pstmt.setLong(2, date.getTime());
 			pstmt.setLong(3, order);
 			
-			return pstmt.execute();
+			pstmt.execute();
+			return true;
 		} 
 		catch (SQLException sqle) {
 			Log.error("Error update last message date", sqle);
@@ -303,7 +411,8 @@ public class ArchiveManager
 				argCounter += 3;
 			}
 			
-			success = pstmt.execute();
+			pstmt.execute();
+			success = true;
 		}
 		catch (SQLException sqle) {
 			
@@ -325,11 +434,17 @@ public class ArchiveManager
 			pstmt.setString(2, roomJid.toBareJID());
 			pstmt.setString(3, nickname);
 			
-			success = pstmt.execute();
+			pstmt.execute();
+			success = true;
 		}
 		catch (SQLException sqle) {
 			
 			Log.error("Error resetting missed messages", sqle);
+		}
+		
+		// Reset in cache
+		if(success == true && this.userMissedMessagesCache.containsKey(nickname)){
+			this.userMissedMessagesCache.put(nickname, 0);
 		}
 		
 		return success;

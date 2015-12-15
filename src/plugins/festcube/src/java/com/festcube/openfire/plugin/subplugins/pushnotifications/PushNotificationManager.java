@@ -8,6 +8,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.TimerTask;
 
 import javax.net.ssl.SSLHandshakeException;
@@ -70,7 +71,7 @@ public class PushNotificationManager
 		pushManager.registerFailedConnectionListener(new FestcubeFailedConnectionListener());
 	}
 	
-	public void send(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients) {
+	public void send(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients, HashMap<String, Integer> recipientsMissedMessages) {
 		
 		// Build payload
 		String userName = "";
@@ -84,16 +85,19 @@ public class PushNotificationManager
 		
 		final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
 		payloadBuilder.setAlertBody(body);
-		payloadBuilder.setBadgeNumber(1);
 		payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
 		payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
 		payloadBuilder.addCustomProperty(PUSH_KEY_USER_JID, senderJID.toBareJID());
 		
-		final String payload = payloadBuilder.buildWithDefaultMaximumLength();
-		
 		for(JID recipient : recipients){
 			
-			ArrayList<String> pushTokens = archiveManager.getPushTokensByUsername(recipient.getNode());
+			String recipientUsername = recipient.getNode();
+			ArrayList<String> pushTokens = archiveManager.getPushTokensByUsername(recipientUsername);
+			
+			Integer rcpMissedMessages = recipientsMissedMessages.containsKey(recipientUsername) ? recipientsMissedMessages.get(recipientUsername) : 0;
+			payloadBuilder.setBadgeNumber(rcpMissedMessages);
+			
+			String payload = payloadBuilder.buildWithDefaultMaximumLength();
 			
 			for(String pushToken : pushTokens){
 			

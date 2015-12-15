@@ -9,6 +9,7 @@ import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.apache.commons.logging.Log;
 
@@ -67,10 +68,10 @@ public class PushNotificationsSubPlugin implements ISubPlugin {
 	}
 	
 	
-	public void sendNotifications(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients){
+	public void sendNotifications(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients, HashMap<String, Integer> recipientsMissedMessages){
 		
 		if(pushManager != null && recipients.size() > 0){
-			pushManager.send(room, senderJID, message, recipients);
+			pushManager.send(room, senderJID, message, recipients, recipientsMissedMessages);
 		}
 	}
 }

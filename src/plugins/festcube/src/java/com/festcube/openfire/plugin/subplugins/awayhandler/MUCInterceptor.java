@@ -121,7 +121,7 @@ public class MUCInterceptor implements MUCEventListener
 		Long messageOrder = Long.valueOf(message.getChildElement("order", MUCHelper.NS_MESSAGE_ORDER).getText());
 		String messageStamp = message.getChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP).getText();
 		
-		new Thread(new ArchivingTask(roomJID, presentJIDs, awayJIDs, messageOrder, true)).start();
+		new Thread(new ArchivingAndNotifyTask(room, presentJIDs, awayJIDs, user, message, messageOrder)).start();
 		
 		if(!isNotification){
 			
@@ -148,30 +148,6 @@ public class MUCInterceptor implements MUCEventListener
 				messageRouter.route(awayMessage);
 			}
 		}
-		
-		// Send push notifications
-		ArrayList<JID> pushReceiverJIDs = new ArrayList<JID>();
-		for(JID jid : roomMembers){
-			
-			if(awayJIDs.contains(jid)){
-				
-				// User is not in room, add to receivers
-				pushReceiverJIDs.add(jid);
-			}
-			else {
-				
-				// User is in room, check presence status
-				MUCRole role = jidRoles.get(jid);
-				Presence presence = role.getPresence();
-				Presence.Show presenceShow = presence != null ? presence.getShow() : Presence.Show.chat;
-				
-				if(presenceShow != null && !presence.getShow().equals(Presence.Show.chat)){
-					pushReceiverJIDs.add(jid);
-				}
-			}
-		}
-		
-		pushNotifications.sendNotifications(room, user, message, pushReceiverJIDs);
 	}
 
 	@Override
@@ -187,28 +163,32 @@ public class MUCInterceptor implements MUCEventListener
 	}
 	
 	
-	private class ArchivingTask implements Runnable {
+	private class ArchivingAndNotifyTask implements Runnable {
 
-		private JID roomJID;
+		private MUCRoom room;
 		private ArrayList<JID> presentJIDs;
 		private ArrayList<JID> awayJIDs;
-		private boolean increaseMissedMessages;
+		private JID senderJID;
+		private Message message;
 		private Long messageOrder;
 		
-		public ArchivingTask(JID roomJID, ArrayList<JID> presentJIDs, ArrayList<JID> awayJIDs, Long messageOrder, boolean increaseMissedMessages)
+		public ArchivingAndNotifyTask(MUCRoom room, ArrayList<JID> presentJIDs, ArrayList<JID> awayJIDs, JID senderJID, Message message, Long messageOrder)
 		{
 			super();
 			
-			this.roomJID = roomJID;
+			this.room = room;
 			this.presentJIDs = presentJIDs;
 			this.awayJIDs = awayJIDs;
-			this.increaseMissedMessages = increaseMissedMessages;
+			this.senderJID = senderJID;
+			this.message = message;
 			this.messageOrder = messageOrder;
 		}
 		
 		public void run() {
 			
 			Connection dbConnection = archiveManager.getConnection();
+			
+			JID roomJID = room.getJID();
 			
 			// Update last seen date for participants
 			ArrayList<String> presentNicknames = new ArrayList<String>();
@@ -222,24 +202,27 @@ public class MUCInterceptor implements MUCEventListener
 			}
 			
 			
-			if(increaseMissedMessages){
-				
-				// Increase missed messages for away users
-				ArrayList<String> awayNicknames = new ArrayList<String>();
-				
-				for(JID jid : awayJIDs){
-					awayNicknames.add(jid.getNode());
-				}
-				
-				if(awayNicknames.size() > 0){
-					archiveManager.increaseMissedMessages(dbConnection, roomJID, awayNicknames);
-				}
+			// Increase missed messages for away users
+			ArrayList<String> awayNicknames = new ArrayList<String>();
+			
+			for(JID jid : awayJIDs){
+				awayNicknames.add(jid.getNode());
 			}
 			
-			// Save room last message date
+			if(awayNicknames.size() > 0){
+				archiveManager.increaseMissedMessages(dbConnection, roomJID, awayNicknames);
+			}
+			
+			
+			// Save room last message date & order
 			archiveManager.updateRoomLastMessageDateAndOrder(dbConnection, roomJID, new Date(), messageOrder);
 			
 			DbConnectionManager.closeConnection(dbConnection);
+			
+			
+			// Send push notifications
+			HashMap<String, Integer> awayJIDsMissedMessages = archiveManager.getMissedMessagesByNicks(awayNicknames);
+			pushNotifications.sendNotifications(room, senderJID, message, awayJIDs, awayJIDsMissedMessages);
 		}
 	}
 }
