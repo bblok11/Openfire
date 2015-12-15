@@ -119,7 +119,9 @@ public class MUCInterceptor implements MUCEventListener
 		
 		// Archive in thread
 		Long messageOrder = Long.valueOf(message.getChildElement("order", MUCHelper.NS_MESSAGE_ORDER).getText());
-		new Thread(new ArchivingTask(roomJID, presentJIDs, awayJIDs, messageOrder, !isNotification)).start();
+		String messageStamp = message.getChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP).getText();
+		
+		new Thread(new ArchivingTask(roomJID, presentJIDs, awayJIDs, messageOrder, true)).start();
 		
 		if(!isNotification){
 			
@@ -140,6 +142,8 @@ public class MUCInterceptor implements MUCEventListener
 				
 				Element missedEl = awayMessage.addChildElement("missedroommessage", MUCHelper.NS_IQ_AWAYDATA);
 				missedEl.addAttribute("roomJid", roomJID.toBareJID());
+				missedEl.addAttribute("order", messageOrder.toString());
+				missedEl.addAttribute("stamp", messageStamp);
 				
 				messageRouter.route(awayMessage);
 			}
@@ -218,7 +222,7 @@ public class MUCInterceptor implements MUCEventListener
 			}
 			
 			
-			if(!increaseMissedMessages){
+			if(increaseMissedMessages){
 				
 				// Increase missed messages for away users
 				ArrayList<String> awayNicknames = new ArrayList<String>();

@@ -48,6 +48,9 @@ public class PushNotificationManager
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 	private static final long EXPIRED_TOKENS_CLEANUP_INTERVAL = JiveConstants.HOUR;
 	
+	private static final String PUSH_KEY_CUBE_JID = "cubeJid";
+	private static final String PUSH_KEY_USER_JID = "userJid";
+	
 	
 	public PushNotificationManager(TaskEngine taskEngine, ArchiveManager archiveManager, String certificatePath, String certificatePassword, boolean debug) throws UnrecoverableKeyException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
 	{
@@ -83,6 +86,8 @@ public class PushNotificationManager
 		payloadBuilder.setAlertBody(body);
 		payloadBuilder.setBadgeNumber(1);
 		payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
+		payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
+		payloadBuilder.addCustomProperty(PUSH_KEY_USER_JID, senderJID.toBareJID());
 		
 		final String payload = payloadBuilder.buildWithDefaultMaximumLength();
 		
