@@ -144,7 +144,7 @@ public class ArchiveManager
 		roomDataMap = null;
 	}
 	
-	public ArrayList<IRoomChatMessage> getArchivedMessages(JID roomJID, XmppResultSet resultSet){
+	public ArrayList<IRoomChatMessage> getArchivedMessages(JID roomJID, XmppResultSet resultSet, boolean latestMode){
 		
 		Long beforeOrder = null;
 		Long afterOrder = null;
@@ -170,9 +170,9 @@ public class ArchiveManager
 		RoomData roomData = getOrCreateRoomData(roomJID);
 		IRoomChatMessage oldestInBuffer = roomData.getOldestMessageInBuffer();
 		
-		if(afterOrder != null && beforeOrder == null){
+		if(afterOrder != null && beforeOrder == null && latestMode == false){
 			
-			// Only afterOrder
+			// Only afterOrder, no latest mode
 			
 			// Database
 			ArrayList<IRoomChatMessage> messagesFromDb = fetchMessagesFromDatabase(roomJID, "ASC", afterOrder, null, max != null ? max : 0);
@@ -206,14 +206,13 @@ public class ArchiveManager
 					if(beforeOrder != null && (message.getOrder().compareTo(beforeOrder) > 0 || message.getOrder().equals(beforeOrder))){
 						continue;
 					}
+					if(afterOrder != null && (message.getOrder().compareTo(afterOrder) < 0 || message.getOrder().equals(afterOrder))){
+						break;
+					}
 					
 					results.add(message);
 					
 					if(max != null && (long)results.size() >= max){
-						break;
-					}
-					
-					if(afterOrder != null && (message.getOrder().compareTo(afterOrder) < 0 || message.getSentDate().equals(afterOrder))){
 						break;
 					}
 				}

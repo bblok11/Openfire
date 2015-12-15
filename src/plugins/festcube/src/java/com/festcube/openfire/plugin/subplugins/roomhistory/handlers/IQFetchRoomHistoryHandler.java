@@ -61,11 +61,14 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
             resultSet = new XmppResultSet(setElement);
         }
         
+        String modeAttributeValue = roomHistoryEl.attributeValue("mode");
+        boolean latestMode = modeAttributeValue != null ? modeAttributeValue.equals("latest") : false;
         
+        // Create response
 		Element responseEl = reply.setChildElement("roomhistory", MUCHelper.NS_IQ_ROOM_HISTORY);
 		responseEl.addAttribute("room", roomJid.toBareJID());
 		
-		ArrayList<IRoomChatMessage> messages = archiveManager.getArchivedMessages(roomJid, resultSet);
+		ArrayList<IRoomChatMessage> messages = archiveManager.getArchivedMessages(roomJid, resultSet, latestMode);
 		
 		for(IRoomChatMessage message : messages){
 			
