@@ -15,6 +15,20 @@ CREATE TABLE ofRoomChatHistory (
    INDEX ofRoomChatHistory_room_indx (`roomJID`)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE ofRoomChatMediaHistory (
+   `id`    			 		BIGINT unsigned  NOT NULL AUTO_INCREMENT,
+   `roomJID`			 	VARCHAR(255)     NOT NULL,
+   `nick`		         	VARCHAR(255)     NOT NULL,
+   `sentDate`          		BIGINT           NOT NULL,
+   `order`					BIGINT			 NOT NULL,
+   `typeId`              	TINYINT(1)	     NOT NULL,
+   `url`		         	VARCHAR(255)     NOT NULL,
+   `thumbUrl`		        VARCHAR(255)     NOT NULL,
+   
+   PRIMARY KEY (`id`),
+   INDEX ofRoomChatMediaHistory_room_indx (`roomJID`)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `ofRoomNotificationHistory` (
    `id`    			 		BIGINT unsigned  NOT NULL AUTO_INCREMENT,
    `sentDate`          		BIGINT           NOT NULL,

@@ -11,6 +11,7 @@ import org.xmpp.packet.Message.Type;
 import org.dom4j.Element;
 
 import com.festcube.openfire.plugin.MUCHelper;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMediaMessage;
 
 public class MUCInterceptor implements MUCEventListener {
 
@@ -59,7 +60,7 @@ public class MUCInterceptor implements MUCEventListener {
 		String messageBody = message.getBody();
 		Type messageType = message.getType();
 		
-		if(messageBody != null && messageType == Type.groupchat){
+		if(messageType == Type.groupchat){
 			
 			// Add stamp
 			Date date = new Date();
@@ -87,7 +88,18 @@ public class MUCInterceptor implements MUCEventListener {
 			message.addChildElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(order.toString());
 		
 			// Archive
-			archiveManager.processMessage(user, roomJID, date, order, messageBody);
+			if(messageBody != null){
+				archiveManager.processMessage(user, roomJID, date, order, messageBody);
+			}
+			else {
+				
+				Element mediaElement = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA);
+				if(mediaElement != null){
+					
+					ArchivedChatMediaMessage.Type type = ArchivedChatMediaMessage.Type.fromString(mediaElement.attributeValue("type"));
+					archiveManager.processMessage(user, roomJID, date, order, type, mediaElement.attributeValue("src"), mediaElement.attributeValue("thumb"));
+				}
+			}
 		}
 	}
 

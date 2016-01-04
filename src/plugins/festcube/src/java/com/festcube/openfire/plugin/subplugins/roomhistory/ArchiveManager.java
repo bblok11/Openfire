@@ -20,15 +20,13 @@ import org.apache.commons.logging.Log;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.util.JiveConstants;
 import org.jivesoftware.util.TaskEngine;
-import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 
 import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMediaMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMessage;
-import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedCubeNotification;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedGlobalCubeNotification;
-import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedRecipientCubeNotification;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.IRoomChatMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.RoomData;
@@ -38,19 +36,27 @@ import com.festcube.openfire.plugin.xep0059.XmppResultSet;
 public class ArchiveManager 
 {
 	private static final String INSERT_CHAT_MESSAGE = "INSERT INTO ofRoomChatHistory(roomJID, nick, sentDate, `order`, body) VALUES (?,?,?,?,?)";
+	private static final String INSERT_CHAT_MEDIA_MESSAGE = "INSERT INTO ofRoomChatMediaHistory(roomJID, nick, sentDate, `order`, typeId, url, thumbUrl) VALUES (?,?,?,?,?,?,?)";
 	private static final String INSERT_NOTIFICATION_MESSAGE = "INSERT INTO ofRoomNotificationHistory(sentDate, type, content) VALUES (?,?,?)";
 	private static final String INSERT_NOTIFICATION_RECIPIENT = "INSERT INTO ofRoomNotificationHistoryRecipients(roomNotificationHistoryId, roomJID, `order`) VALUES (?, ?, ?)";
 	
 	private static final String SELECT_MESSAGES = ""
 			+ "("
-			+ "  SELECT id, sentDate, `order`, nick, body, NULL notificationType, NULL notificationContent "
+			+ "  SELECT id, sentDate, `order`, nick, body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, NULL notificationType, NULL notificationContent "
 			+ "  FROM ofRoomChatHistory"
 			+ "  WHERE roomJID = ?"
 			+ "  %s"
 			+ ")"
 			+ "UNION"
 			+ "("
-			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, type notificationType, content notificationContent "
+			+ "  SELECT id, sentDate, `order`, nick, NULL body, typeId mediaTypeId, url mediaUrl, thumbUrl mediaThumbUrl, NULL notificationType, NULL notificationContent "
+			+ "  FROM ofRoomChatMediaHistory"
+			+ "  WHERE roomJID = ?"
+			+ "  %s"
+			+ ")"
+			+ "UNION"
+			+ "("
+			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, type notificationType, content notificationContent "
 			+ "  FROM ofRoomNotificationHistory"
 			+ "  JOIN ofRoomNotificationHistoryRecipients ON ofRoomNotificationHistory.id = ofRoomNotificationHistoryRecipients.roomNotificationHistoryId"
 			+ "  WHERE ofRoomNotificationHistoryRecipients.roomJID = ?"
@@ -85,7 +91,27 @@ public class ArchiveManager
 	
 	public void processMessage(JID sender, JID receiver, Date date, Long order, String body){
 		
+		if(body == null){
+			return;
+		}
+		
 		ArchivedChatMessage message = new ArchivedChatMessage(sender, receiver, date, order, body);
+		
+		processMessage(message, receiver);
+	}
+	
+	public void processMessage(JID sender, JID receiver, Date date, Long order, ArchivedChatMediaMessage.Type type, String url, String thumbUrl){
+		
+		if(type == null || url == null || thumbUrl == null){
+			return;
+		}
+		
+		ArchivedChatMediaMessage message = new ArchivedChatMediaMessage(sender, receiver, date, order, type, url, thumbUrl);
+		
+		processMessage(message, receiver);
+	}
+	
+	public void processMessage(ArchivedChatMessage message, JID receiver){
 		
 		RoomData roomData = getOrCreateRoomData(receiver);
 		roomData.addMessage(message);
@@ -274,14 +300,14 @@ public class ArchiveManager
 				limitCondition = " LIMIT ?";
 			}
 			
-			String query = String.format(SELECT_MESSAGES, sendDateCondition, sendDateCondition, orderCondition, limitCondition);
+			String query = String.format(SELECT_MESSAGES, sendDateCondition, sendDateCondition, sendDateCondition, orderCondition, limitCondition);
 			
 			pstmt = con.prepareStatement(query);
 			
 			int paramCursor = 1;
 			
-			// Assign params twice, for both the subqueries
-			for(int i=0; i<2; i++){
+			// Assign params 3 times, for both the subqueries
+			for(int i=0; i<3; i++){
 			
 				pstmt.setString(paramCursor, roomJID.toBareJID());
 				paramCursor++;
@@ -314,7 +340,13 @@ public class ArchiveManager
 					message = new ArchivedRecipientCubeNotification(rs, roomJID);
 				}
 				else {
-					message = new ArchivedChatMessage(rs, roomJID);
+					
+					if(rs.getString("mediaUrl") != null){
+						message = new ArchivedChatMediaMessage(rs, roomJID);
+					}
+					else {
+						message = new ArchivedChatMessage(rs, roomJID);
+					}
 				}
 				
 				results.add(message);
@@ -449,10 +481,13 @@ public class ArchiveManager
 			        // Messages
 			        
 					PreparedStatement pstmtMessage = null;
+					PreparedStatement pstmtMediaMessage = null;
 
 					try {
 						
 						pstmtMessage = con.prepareStatement(INSERT_CHAT_MESSAGE);
+						pstmtMediaMessage = con.prepareStatement(INSERT_CHAT_MEDIA_MESSAGE);
+						
 						IRoomChatMessage message;
 						int messageCounter = 0;
 						
@@ -464,7 +499,26 @@ public class ArchiveManager
 							
 							while ((message = roomData.pollMessage()) != null) {
 								
-								if(message instanceof ArchivedChatMessage){
+								if(message instanceof ArchivedChatMediaMessage){
+									
+									ArchivedChatMediaMessage chatMediaMessage = (ArchivedChatMediaMessage)message;
+								
+									pstmtMediaMessage.setString(1, chatMediaMessage.getRoomJID().toBareJID());
+									pstmtMediaMessage.setString(2, chatMediaMessage.getFromJID().getNode());
+									pstmtMediaMessage.setLong(3, chatMediaMessage.getSentDate().getTime());
+									pstmtMediaMessage.setLong(4, chatMediaMessage.getOrder());
+									pstmtMediaMessage.setInt(5, chatMediaMessage.getType().getIntValue());
+									pstmtMediaMessage.setString(6, chatMediaMessage.getUrl());
+									pstmtMediaMessage.setString(7, chatMediaMessage.getThumbUrl());
+									
+									if (DbConnectionManager.isBatchUpdatesSupported()) {
+										pstmtMediaMessage.addBatch();
+									} 
+									else {
+										pstmtMediaMessage.execute();
+									}
+								}
+								else if(message instanceof ArchivedChatMessage){
 									
 									ArchivedChatMessage chatMessage = (ArchivedChatMessage)message;
 								
@@ -480,19 +534,23 @@ public class ArchiveManager
 									else {
 										pstmtMessage.execute();
 									}
-									
-									// Only batch up to 500 items at a time.
-									if (messageCounter % 500 == 0 && DbConnectionManager.isBatchUpdatesSupported()) {
-										pstmtMessage.executeBatch();
-									}
-									
-									messageCounter++;
 								}
+								
+								// Only batch up to 500 items at a time.
+								if (messageCounter % 500 == 0 && DbConnectionManager.isBatchUpdatesSupported()) {
+									
+									pstmtMessage.executeBatch();
+									pstmtMediaMessage.executeBatch();
+								}
+								
+								messageCounter++;
 							}
 						}
 						
 						if (DbConnectionManager.isBatchUpdatesSupported()) {
+							
 							pstmtMessage.executeBatch();
+							pstmtMediaMessage.executeBatch();
 						}
 					}
 					catch (Exception e) {
@@ -502,6 +560,10 @@ public class ArchiveManager
 						
 						if(pstmtMessage != null){
 							pstmtMessage.close();
+						}
+						
+						if(pstmtMediaMessage != null){
+							pstmtMediaMessage.close();
 						}
 					}
 				} 

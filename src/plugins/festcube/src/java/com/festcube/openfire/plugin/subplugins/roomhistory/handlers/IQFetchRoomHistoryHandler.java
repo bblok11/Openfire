@@ -18,6 +18,7 @@ import org.xmpp.packet.PacketError;
 
 import com.festcube.openfire.plugin.MUCHelper;
 import com.festcube.openfire.plugin.subplugins.roomhistory.ArchiveManager;
+import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMediaMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedChatMessage;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedCubeNotification;
 import com.festcube.openfire.plugin.subplugins.roomhistory.models.ArchivedMessage;
@@ -84,8 +85,20 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 				messageEl.addAttribute("to", roomJid.toBareJID());
 				messageEl.addAttribute("type", "groupchat");
 				
-				Element bodyEl = messageEl.addElement("body");
-				bodyEl.addText(archivedMessage.getBody());
+				if(archivedMessage instanceof ArchivedChatMediaMessage){
+					
+					ArchivedChatMediaMessage mediaMessage = (ArchivedChatMediaMessage)archivedMessage;
+					
+					Element mediaEl = messageEl.addElement("media", MUCHelper.NS_MESSAGE_MEDIA);
+					mediaEl.addAttribute("type", mediaMessage.getType().getStringValue());
+					mediaEl.addAttribute("src", mediaMessage.getUrl());
+					mediaEl.addAttribute("thumb", mediaMessage.getThumbUrl());
+				}
+				else {
+					
+					Element bodyEl = messageEl.addElement("body");
+					bodyEl.addText(archivedMessage.getBody());
+				}
 			}
 			else if(message instanceof ArchivedRecipientCubeNotification){
 				
