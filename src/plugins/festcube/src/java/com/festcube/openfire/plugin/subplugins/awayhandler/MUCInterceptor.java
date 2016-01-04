@@ -86,12 +86,12 @@ public class MUCInterceptor implements MUCEventListener
 		}
 		
 		Element cubeNotificationEl = message.getChildElement("cubenotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
-		boolean messageBodyIsEmpty = message.getBody() == null || message.getBody().equals("");
 		boolean isNotification = message.getType() == Type.headline && cubeNotificationEl != null;
+		Element orderElement = message.getChildElement("order", MUCHelper.NS_MESSAGE_ORDER);
 		
-		if(messageBodyIsEmpty && !isNotification){
+		if(orderElement == null){
 			
-			// Ignore, this is an empty message and no notification
+			// No order assigned, so this message can be ignored
 			return;
 		}
 		
@@ -118,7 +118,7 @@ public class MUCInterceptor implements MUCEventListener
 		}
 		
 		// Archive in thread
-		Long messageOrder = Long.valueOf(message.getChildElement("order", MUCHelper.NS_MESSAGE_ORDER).getText());
+		Long messageOrder = Long.valueOf(orderElement.getText());
 		String messageStamp = message.getChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP).getText();
 		
 		new Thread(new ArchivingAndNotifyTask(room, presentJIDs, awayJIDs, user, message, messageOrder)).start();

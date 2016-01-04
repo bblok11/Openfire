@@ -26,6 +26,7 @@ import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
 
+import com.festcube.openfire.plugin.MUCHelper;
 import com.festcube.openfire.plugin.subplugins.pushnotifications.models.UserMobileDevice;
 import com.relayrides.pushy.apns.ApnsEnvironment;
 import com.relayrides.pushy.apns.ExpiredToken;
@@ -81,7 +82,10 @@ public class PushNotificationManager
 			// Ignore
 		}
 		
-		String body = userName + " in " + room.getDescription() + ":\n" + message.getBody();
+		boolean isMedia = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA) != null;
+		
+		String messageContent = isMedia ? "Picture" : message.getBody();
+		String body = userName + " in " + room.getDescription() + ":\n" + messageContent;
 		
 		final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
 		payloadBuilder.setAlertBody(body);

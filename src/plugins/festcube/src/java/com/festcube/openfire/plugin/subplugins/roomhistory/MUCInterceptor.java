@@ -62,6 +62,13 @@ public class MUCInterceptor implements MUCEventListener {
 		
 		if(messageType == Type.groupchat){
 			
+			Element mediaElement = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA);
+			
+			boolean hasContent = (messageBody != null && !messageBody.equals("")) || mediaElement != null;
+			if(!hasContent){
+				return;
+			}
+			
 			// Add stamp
 			Date date = new Date();
 			
@@ -93,7 +100,6 @@ public class MUCInterceptor implements MUCEventListener {
 			}
 			else {
 				
-				Element mediaElement = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA);
 				if(mediaElement != null){
 					
 					ArchivedChatMediaMessage.Type type = ArchivedChatMediaMessage.Type.fromString(mediaElement.attributeValue("type"));
