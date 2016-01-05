@@ -63,13 +63,11 @@ public class ArchiveManager
 			pstmt.setString(6, dateString);
 			pstmt.setString(7, dateString);
 			
-			boolean success = pstmt.execute();
+			pstmt.execute();
 			
-			if(success){
-				invalidateDevicesFromUsername(username);
-			}
+			invalidateDevicesFromUsername(username);
 			
-			return success;
+			return true;
 		} 
 		catch (SQLException sqle) {
 			Log.error("Error create/update device info", sqle);
@@ -93,13 +91,11 @@ public class ArchiveManager
 			pstmt.setString(2, deviceIdentifier);
 			pstmt.setInt(3, devicePlatformId.intValue());
 			
-			boolean success = pstmt.execute();
+			pstmt.execute();
 			
-			if(success){
-				invalidateDevicesFromUsername(username);
-			}
+			invalidateDevicesFromUsername(username);
 			
-			return success;
+			return true;
 		} 
 		catch (SQLException sqle) {
 			Log.error("Error deleting device info", sqle);

@@ -84,7 +84,7 @@ public class PushNotificationManager
 		
 		boolean isMedia = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA) != null;
 		
-		String messageContent = isMedia ? "Picture" : message.getBody();
+		String messageContent = isMedia ? "\uD83D\uDCF7" : message.getBody();
 		String body = userName + " in " + room.getDescription() + ":\n" + messageContent;
 		
 		final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
@@ -105,6 +105,8 @@ public class PushNotificationManager
 			
 			for(String pushToken : pushTokens){
 			
+				Log.info("Sending " + body + " to " + recipient.toString() + " " + pushToken);
+				
 				try {
 					
 					byte[] token = TokenUtil.tokenStringToByteArray(pushToken);
@@ -212,6 +214,8 @@ public class PushNotificationManager
 			if (cause instanceof SSLHandshakeException) {
 			
 				String body = "Push connection failed: \n" + cause.toString();
+				Log.error(body);
+				
 				sendAlertEmail(body);
 			}
 		}
