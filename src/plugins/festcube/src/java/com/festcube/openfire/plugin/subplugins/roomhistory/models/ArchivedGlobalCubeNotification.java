@@ -3,17 +3,15 @@ package com.festcube.openfire.plugin.subplugins.roomhistory.models;
 import java.util.ArrayList;
 import java.util.Date;
 
-import org.xmpp.packet.JID;
-
 import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
 
 public class ArchivedGlobalCubeNotification extends ArchivedCubeNotification
 {
 	protected ArrayList<CubeNotificationRecipient> recipients;
 	
-	public ArchivedGlobalCubeNotification(Date sentDate, int type, String content, ArrayList<CubeNotificationRecipient> recipients) {
+	public ArchivedGlobalCubeNotification(Date sentDate, int type, String data, String descriptions, ArrayList<CubeNotificationRecipient> recipients) {
 		
-		super(sentDate, type, content);
+		super(sentDate, type, data, descriptions);
 		
 		if(recipients == null){
 			recipients = new ArrayList<CubeNotificationRecipient>();
@@ -24,7 +22,7 @@ public class ArchivedGlobalCubeNotification extends ArchivedCubeNotification
 	
 	public ArchivedRecipientCubeNotification getRecipientNotification(CubeNotificationRecipient recipient){
 		
-		return new ArchivedRecipientCubeNotification(recipient.getJid(), this.sentDate, this.type, this.content, recipient.getOrder());
+		return new ArchivedRecipientCubeNotification(recipient.getJid(), this.sentDate, this.type, this.data, this.descriptions, recipient.getOrder());
 	}
 	
 	public ArrayList<CubeNotificationRecipient> getRecipients(){

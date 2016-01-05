@@ -2,6 +2,7 @@ package com.festcube.openfire.plugin.subplugins.roomhistory;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.jivesoftware.openfire.XMPPServer;
@@ -46,9 +47,9 @@ public class RoomHistorySubPlugin implements ISubPlugin {
     	archiveManager.stop();
     }
     
-    public void reportRoomNotification(int type, String content, ArrayList<CubeNotificationRecipient> recipients)
+    public void reportRoomNotification(int type, String data, Map<String, String> descriptions, ArrayList<CubeNotificationRecipient> recipients)
     {
-    	archiveManager.processNotification(new Date(), type, content, recipients);
+    	archiveManager.processNotification(new Date(), type, data, descriptions, recipients);
     }
     
     public Long consumeNextMessageOrder(JID roomJID)

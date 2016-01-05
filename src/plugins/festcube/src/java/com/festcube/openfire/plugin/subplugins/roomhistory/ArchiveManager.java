@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.TimerTask;
@@ -21,6 +22,7 @@ import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.util.JiveConstants;
 import org.jivesoftware.util.TaskEngine;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
+import org.json.simple.JSONObject;
 import org.xmpp.packet.JID;
 
 import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
@@ -37,26 +39,26 @@ public class ArchiveManager
 {
 	private static final String INSERT_CHAT_MESSAGE = "INSERT INTO ofRoomChatHistory(roomJID, nick, sentDate, `order`, body) VALUES (?,?,?,?,?)";
 	private static final String INSERT_CHAT_MEDIA_MESSAGE = "INSERT INTO ofRoomChatMediaHistory(roomJID, nick, sentDate, `order`, typeId, url, thumbUrl) VALUES (?,?,?,?,?,?,?)";
-	private static final String INSERT_NOTIFICATION_MESSAGE = "INSERT INTO ofRoomNotificationHistory(sentDate, type, content) VALUES (?,?,?)";
+	private static final String INSERT_NOTIFICATION_MESSAGE = "INSERT INTO ofRoomNotificationHistory(sentDate, type, data, descriptions) VALUES (?,?,?,?)";
 	private static final String INSERT_NOTIFICATION_RECIPIENT = "INSERT INTO ofRoomNotificationHistoryRecipients(roomNotificationHistoryId, roomJID, `order`) VALUES (?, ?, ?)";
 	
 	private static final String SELECT_MESSAGES = ""
 			+ "("
-			+ "  SELECT id, sentDate, `order`, nick, body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, NULL notificationType, NULL notificationContent "
+			+ "  SELECT id, sentDate, `order`, nick, body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, NULL notificationType, NULL notificationData, NULL notificationDescriptions "
 			+ "  FROM ofRoomChatHistory"
 			+ "  WHERE roomJID = ?"
 			+ "  %s"
 			+ ")"
 			+ "UNION"
 			+ "("
-			+ "  SELECT id, sentDate, `order`, nick, NULL body, typeId mediaTypeId, url mediaUrl, thumbUrl mediaThumbUrl, NULL notificationType, NULL notificationContent "
+			+ "  SELECT id, sentDate, `order`, nick, NULL body, typeId mediaTypeId, url mediaUrl, thumbUrl mediaThumbUrl, NULL notificationType, NULL notificationData, NULL notificationDescriptions "
 			+ "  FROM ofRoomChatMediaHistory"
 			+ "  WHERE roomJID = ?"
 			+ "  %s"
 			+ ")"
 			+ "UNION"
 			+ "("
-			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, type notificationType, content notificationContent "
+			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, type notificationType, data notificationData, descriptions notificationDescriptions "
 			+ "  FROM ofRoomNotificationHistory"
 			+ "  JOIN ofRoomNotificationHistoryRecipients ON ofRoomNotificationHistory.id = ofRoomNotificationHistoryRecipients.roomNotificationHistoryId"
 			+ "  WHERE ofRoomNotificationHistoryRecipients.roomJID = ?"
@@ -119,9 +121,11 @@ public class ArchiveManager
 		roomData.updateLastRequest();
 	}
 	
-	public void processNotification(Date date, int type, String content, ArrayList<CubeNotificationRecipient> recipients){
+	public void processNotification(Date date, int type, String data, Map<String, String> descriptions, ArrayList<CubeNotificationRecipient> recipients){
 		
-		ArchivedGlobalCubeNotification notification = new ArchivedGlobalCubeNotification(date, type, content, recipients);
+		JSONObject descriptionsJSON = new JSONObject(descriptions);
+		
+		ArchivedGlobalCubeNotification notification = new ArchivedGlobalCubeNotification(date, type, data, descriptionsJSON.toJSONString(), recipients);
 		notificationQueue.add(notification);
 		
 		// Add the notification to each room
@@ -412,7 +416,8 @@ public class ArchiveManager
 							// Notification
 							pstmtNotificationMessage.setLong(1, notification.getSentDate().getTime());
 							pstmtNotificationMessage.setInt(2, notification.getType());
-							DbConnectionManager.setLargeTextField(pstmtNotificationMessage, 3, notification.getContent());
+							DbConnectionManager.setLargeTextField(pstmtNotificationMessage, 3, notification.getData());
+							DbConnectionManager.setLargeTextField(pstmtNotificationMessage, 4, notification.getDescriptions());
 							
 							int affectedRows = pstmtNotificationMessage.executeUpdate();
 					        if (affectedRows == 0) {

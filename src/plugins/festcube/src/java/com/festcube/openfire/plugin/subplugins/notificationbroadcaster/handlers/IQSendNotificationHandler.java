@@ -3,6 +3,7 @@ package com.festcube.openfire.plugin.subplugins.notificationbroadcaster.handlers
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -210,6 +211,8 @@ public class IQSendNotificationHandler extends IQHandler {
 		generatedNotificationDataEl.setText(dataValue);
 		
 		// Add descriptions
+		HashMap<String, String> descriptions = new HashMap<>();
+		
 		if(descriptionsEl != null){
 			
 			@SuppressWarnings("unchecked")
@@ -219,9 +222,14 @@ public class IQSendNotificationHandler extends IQHandler {
 			
 			for(Element descriptionEl : descriptionElements){
 				
+				String locale = descriptionEl.attributeValue("locale");
+				String description = descriptionEl.getTextTrim();
+				
 				Element currentDescriptionEl = generatedNotificationDescriptionsEl.addElement("description");
-				currentDescriptionEl.addAttribute("locale", descriptionEl.attributeValue("locale"));
-				currentDescriptionEl.setText(descriptionEl.getTextTrim());
+				currentDescriptionEl.addAttribute("locale", locale);
+				currentDescriptionEl.setText(description);
+				
+				descriptions.put(locale, description);
 			}
 		}
 		
@@ -310,7 +318,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		// Report to room history
 		if(!isSilent){
 			
-			roomHistoryPlugin.reportRoomNotification(Integer.valueOf(typeValue), dataValue, cubeNotificationRecipients);
+			roomHistoryPlugin.reportRoomNotification(Integer.valueOf(typeValue), dataValue, descriptions, cubeNotificationRecipients);
 		}
 	}
 

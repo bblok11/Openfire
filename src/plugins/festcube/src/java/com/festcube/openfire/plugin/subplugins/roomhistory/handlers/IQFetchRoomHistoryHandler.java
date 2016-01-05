@@ -2,6 +2,7 @@ package com.festcube.openfire.plugin.subplugins.roomhistory.handlers;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 
 import org.apache.commons.logging.Log;
 import org.dom4j.Element;
@@ -11,6 +12,8 @@ import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.handler.IQHandler;
 import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.xmpp.packet.IQ;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
@@ -111,7 +114,36 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 				Element notificationEl = messageEl.addElement("cubenotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
 				notificationEl.addAttribute("type", String.valueOf(notification.getType()));
 				
-				notificationEl.addElement("data").addText(notification.getContent());
+				notificationEl.addElement("data").addText(notification.getData());
+				
+				// Descriptions
+				String descriptionsString = notification.getDescriptions();
+				if(descriptionsString != null){
+					
+					Element descriptionsEl = notificationEl.addElement("descriptions");
+					
+					try {
+						
+						JSONObject descriptions = new JSONObject(descriptionsString);
+						
+						@SuppressWarnings("unchecked")
+						Iterator<String> locales = descriptions.keys();
+
+						while(locales.hasNext()) {
+							
+						    String locale = (String)locales.next();
+						    String description = descriptions.getString(locale);
+						    
+						    Element currentDescriptionEl = descriptionsEl.addElement("description");
+						    currentDescriptionEl.addAttribute("locale", locale);
+						    currentDescriptionEl.setText(description);
+						}
+						
+					} catch (JSONException e) {
+						
+						Log.error("Error while parsing cube notification descriptions JSON", e);
+					}
+				}
 			}
 			
 			Element delayEl = messageEl.addElement("delay", "urn:xmpp:delay");

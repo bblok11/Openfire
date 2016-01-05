@@ -33,7 +33,8 @@ CREATE TABLE `ofRoomNotificationHistory` (
    `id`    			 		BIGINT unsigned  NOT NULL AUTO_INCREMENT,
    `sentDate`          		BIGINT           NOT NULL,
    `type` 					INT,
-   `content`				TEXT COLLATE utf8mb4_unicode_ci,
+   `data`					TEXT COLLATE utf8mb4_unicode_ci,
+   `descriptions`			TEXT COLLATE utf8mb4_unicode_ci,
    
    PRIMARY KEY (`id`)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

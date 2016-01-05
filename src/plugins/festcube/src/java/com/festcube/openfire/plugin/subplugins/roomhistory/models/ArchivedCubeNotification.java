@@ -7,13 +7,15 @@ import java.util.Date;
 abstract public class ArchivedCubeNotification extends ArchivedMessage
 {
 	protected int type;
-	protected String content;
+	protected String data;
+	protected String descriptions;
 	
-	public ArchivedCubeNotification(Date sentDate, int type, String content) {
+	public ArchivedCubeNotification(Date sentDate, int type, String data, String descriptions) {
 		
 		this.sentDate = sentDate;
 		this.type = type;
-		this.content = content;
+		this.data = data;
+		this.descriptions = descriptions;
     }
     
     public ArchivedCubeNotification(ResultSet rs) throws SQLException {
@@ -21,7 +23,8 @@ abstract public class ArchivedCubeNotification extends ArchivedMessage
     	this.id = rs.getLong("id");
     	this.sentDate = new Date(rs.getLong("sentDate"));
     	this.type = rs.getInt("notificationType");
-    	this.content = rs.getString("notificationContent");
+    	this.data = rs.getString("notificationData");
+    	this.descriptions = rs.getString("notificationDescriptions");
     }
     
     public void setId(long id){
@@ -32,7 +35,11 @@ abstract public class ArchivedCubeNotification extends ArchivedMessage
 		return type;
 	}
 
-	public String getContent() {
-		return content;
+	public String getData() {
+		return data;
+	}
+	
+	public String getDescriptions() {
+		return descriptions;
 	}
 }
