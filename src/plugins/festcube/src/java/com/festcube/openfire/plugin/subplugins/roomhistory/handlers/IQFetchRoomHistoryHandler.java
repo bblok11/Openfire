@@ -110,7 +110,8 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 				
 				Element notificationEl = messageEl.addElement("cubenotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
 				notificationEl.addAttribute("type", String.valueOf(notification.getType()));
-				notificationEl.addText(notification.getContent());
+				
+				notificationEl.addElement("data").addText(notification.getContent());
 			}
 			
 			Element delayEl = messageEl.addElement("delay", "urn:xmpp:delay");

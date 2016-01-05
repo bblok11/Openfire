@@ -9,11 +9,13 @@ import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.TimerTask;
 
 import javax.net.ssl.SSLHandshakeException;
 
 import org.apache.commons.logging.Log;
+import org.dom4j.Element;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.muc.MUCRoom;
 import org.jivesoftware.openfire.user.UserNameManager;
@@ -52,6 +54,10 @@ public class PushNotificationManager
 	
 	private static final String PUSH_KEY_CUBE_JID = "cubeJid";
 	private static final String PUSH_KEY_USER_JID = "userJid";
+	private static final String PUSH_KEY_TYPE = "type";
+	
+	private static final String PUSH_KEY_TYPE_MESSAGE = "message";
+	private static final String PUSH_KEY_TYPE_CUBENOTIFICATION = "cubenotification";
 	
 	
 	public PushNotificationManager(TaskEngine taskEngine, ArchiveManager archiveManager, String certificatePath, String certificatePassword, boolean debug) throws UnrecoverableKeyException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
@@ -82,16 +88,44 @@ public class PushNotificationManager
 			// Ignore
 		}
 		
-		boolean isMedia = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA) != null;
-		
-		String messageContent = isMedia ? "\uD83D\uDCF7" : message.getBody();
-		String body = userName + " in " + room.getDescription() + ":\n" + messageContent;
-		
 		final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
-		payloadBuilder.setAlertBody(body);
-		payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
-		payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
-		payloadBuilder.addCustomProperty(PUSH_KEY_USER_JID, senderJID.toBareJID());
+		
+		Element cubeNotificationEl = message.getChildElement("cubenotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
+		boolean isNotification = message.getType() == Message.Type.headline && cubeNotificationEl != null;
+		
+		HashMap<String, String> localeDescriptionMap = new HashMap<String, String>();
+		
+		if(isNotification){
+			
+			payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
+			payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
+			payloadBuilder.addCustomProperty(PUSH_KEY_TYPE, PUSH_KEY_TYPE_CUBENOTIFICATION);
+			
+			Element descriptionsElement = cubeNotificationEl.element("descriptions");
+			
+			if(descriptionsElement != null){
+				
+				@SuppressWarnings("unchecked")
+				List<Element> descriptionElements = descriptionsElement.elements("description");
+					
+				for(Element descriptionEl : descriptionElements){
+					localeDescriptionMap.put(descriptionEl.attributeValue("locale"), descriptionEl.getTextTrim());
+				}
+			}
+		}
+		else {
+			
+			boolean isMedia = message.getChildElement("media", MUCHelper.NS_MESSAGE_MEDIA) != null;
+			
+			String messageContent = isMedia ? "\uD83D\uDCF7" : message.getBody();
+			String body = userName + " in " + room.getDescription() + ":\n" + messageContent;
+			
+			payloadBuilder.setAlertBody(body);
+			payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
+			payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
+			payloadBuilder.addCustomProperty(PUSH_KEY_USER_JID, senderJID.toBareJID());
+			payloadBuilder.addCustomProperty(PUSH_KEY_TYPE, PUSH_KEY_TYPE_MESSAGE);
+		}
 		
 		for(JID recipient : recipients){
 			
@@ -101,11 +135,22 @@ public class PushNotificationManager
 			Integer rcpMissedMessages = recipientsMissedMessages.containsKey(recipientUsername) ? recipientsMissedMessages.get(recipientUsername) : 0;
 			payloadBuilder.setBadgeNumber(rcpMissedMessages);
 			
+			if(isNotification){
+				
+				// Set body with the appropriate locale
+				
+				// TODO: Use the right locale
+				String locale = "en";
+				
+				String messageContent = localeDescriptionMap.containsKey(locale) ? localeDescriptionMap.get(locale) : "";
+				String body = room.getDescription() + ":\n" + messageContent;
+				
+				payloadBuilder.setAlertBody(body);
+			}
+			
 			String payload = payloadBuilder.buildWithDefaultMaximumLength();
 			
 			for(String pushToken : pushTokens){
-			
-				Log.info("Sending " + body + " to " + recipient.toString() + " " + pushToken);
 				
 				try {
 					

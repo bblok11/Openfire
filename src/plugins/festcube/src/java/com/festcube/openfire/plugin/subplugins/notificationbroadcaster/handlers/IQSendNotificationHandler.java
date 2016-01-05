@@ -2,6 +2,7 @@ package com.festcube.openfire.plugin.subplugins.notificationbroadcaster.handlers
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -16,6 +17,7 @@ import org.jivesoftware.openfire.muc.MUCRoom;
 import org.jivesoftware.openfire.muc.MultiUserChatManager;
 import org.jivesoftware.openfire.muc.MultiUserChatService;
 import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.XMPPDateTimeFormat;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.IQ;
 import org.xmpp.packet.JID;
@@ -163,6 +165,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		Element initiatingUserEl = notificationEl.element("initiatinguser");
 		Element dataEl = notificationEl.element("data");
 		Element recipientsEl = notificationEl.element("recipients");
+		Element descriptionsEl = notificationEl.element("descriptions");
 		
 		if(typeEl == null || dataEl == null || recipientsEl == null){
 			return;
@@ -202,8 +205,27 @@ public class IQSendNotificationHandler extends IQHandler {
 			generatedNotification.addAttribute("silent", "silent");
 		}
 		
-		generatedNotification.setText(dataValue);
+		// Add data
+		Element generatedNotificationDataEl = generatedNotification.addElement("data");
+		generatedNotificationDataEl.setText(dataValue);
 		
+		// Add descriptions
+		if(descriptionsEl != null){
+			
+			@SuppressWarnings("unchecked")
+			List<Element> descriptionElements = descriptionsEl.elements("description");
+			
+			Element generatedNotificationDescriptionsEl = generatedNotification.addElement("descriptions");
+			
+			for(Element descriptionEl : descriptionElements){
+				
+				Element currentDescriptionEl = generatedNotificationDescriptionsEl.addElement("description");
+				currentDescriptionEl.addAttribute("locale", descriptionEl.attributeValue("locale"));
+				currentDescriptionEl.setText(descriptionEl.getTextTrim());
+			}
+		}
+		
+		// Send to recipients
 		ArrayList<CubeNotificationRecipient> cubeNotificationRecipients = new ArrayList<CubeNotificationRecipient>();
 		
 		for(Element recipientEl : recipients){
@@ -240,6 +262,9 @@ public class IQSendNotificationHandler extends IQHandler {
 					
 					newMessage.addChildElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(order.toString());
 					
+					Element stampEl = newMessage.addChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP);
+					stampEl.addText(XMPPDateTimeFormat.format(new Date()));
+					
 					room.send(newMessage);
 					
 					// Let the listeners know
@@ -258,19 +283,27 @@ public class IQSendNotificationHandler extends IQHandler {
 								continue;
 							}
 							
-							Message userMessage = generatedMessage.createCopy();
-							userMessage.setFrom(fromJid);
-							userMessage.setTo(member);
-							
-							messageRouter.route(userMessage);
+							try {
+								
+								Message userMessage = generatedMessage.createCopy();
+								userMessage.setFrom(fromJid);
+								userMessage.setTo(member);
+								
+								messageRouter.route(userMessage);
+							}
+							catch(Exception e){
+								
+								Log.error("Error during notification send for receipient " + member.toString(), e);
+							}
 						}
 					}
 					
-					cubeNotificationRecipients.add( new CubeNotificationRecipient(jid, order));
+					cubeNotificationRecipients.add(new CubeNotificationRecipient(jid, order));
 				}
 			}
 			catch(Exception e){
-				// Ignore
+				
+				Log.error("Error during notification send", e);
 			}
 		}
 		
