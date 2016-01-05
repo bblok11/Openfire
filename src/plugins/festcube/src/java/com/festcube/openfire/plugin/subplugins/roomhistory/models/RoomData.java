@@ -28,6 +28,12 @@ public class RoomData
 			+ "  UNION ALL"
 			
 			+ "  SELECT COUNT(id) messageCountSub, MAX(`order`) as lastMessageOrderSub"
+			+ "  FROM ofRoomChatMediaHistory "
+			+ "  WHERE roomJID = ?"
+			
+			+ "  UNION ALL"
+			
+			+ "  SELECT COUNT(id) messageCountSub, MAX(`order`) as lastMessageOrderSub"
 			+ "  FROM ofRoomNotificationHistory"
 			+ "  JOIN ofRoomNotificationHistoryRecipients ON ofRoomNotificationHistory.id = ofRoomNotificationHistoryRecipients.roomNotificationHistoryId"
 			+ "  WHERE ofRoomNotificationHistoryRecipients.roomJID = ?"
@@ -156,6 +162,7 @@ public class RoomData
 			pstmt = con.prepareStatement(COUNT_MESSAGES);
 			pstmt.setString(1, roomJID.toBareJID());
 			pstmt.setString(2, roomJID.toBareJID());
+			pstmt.setString(3, roomJID.toBareJID());
 
 			rs = pstmt.executeQuery();
 			
