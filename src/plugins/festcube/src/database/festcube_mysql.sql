@@ -72,6 +72,7 @@ CREATE TABLE `ofUserMobileDevices` (
 	`devicePlatformId` 			TINYINT(1) 		unsigned NOT NULL,
 	`deviceModel` 				VARCHAR(255) 	DEFAULT NULL,
 	`pushToken` 				VARCHAR(255) 	DEFAULT NULL,
+	`locale` 					VARCHAR(255) 	DEFAULT NULL,
 	`creationDate` 				CHAR(15) NOT 	NULL,
 	`modificationDate` 			CHAR(15) NOT 	NULL,
 	

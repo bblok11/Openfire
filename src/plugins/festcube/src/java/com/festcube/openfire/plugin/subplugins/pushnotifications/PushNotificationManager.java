@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimerTask;
 
 import javax.net.ssl.SSLHandshakeException;
@@ -23,6 +24,7 @@ import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.EmailService;
 import org.jivesoftware.util.JiveConstants;
 import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.LocaleUtils;
 import org.jivesoftware.util.TaskEngine;
 import org.jivesoftware.util.log.util.CommonsLogFactory;
 import org.xmpp.packet.JID;
@@ -130,36 +132,43 @@ public class PushNotificationManager
 		for(JID recipient : recipients){
 			
 			String recipientUsername = recipient.getNode();
-			ArrayList<String> pushTokens = archiveManager.getPushTokensByUsername(recipientUsername);
+			ArrayList<UserMobileDevice> devices = archiveManager.getDevicesByUsername(recipientUsername);
 			
 			Integer rcpMissedMessages = recipientsMissedMessages.containsKey(recipientUsername) ? recipientsMissedMessages.get(recipientUsername) : 0;
 			payloadBuilder.setBadgeNumber(rcpMissedMessages);
 			
-			if(isNotification){
+			for(UserMobileDevice device : devices){
 				
-				// Set body with the appropriate locale
+				if(isNotification){
+					
+					// Set body with the appropriate locale
+					String localeName = device.getLocale();
+					if(localeName == null){
+						localeName = "en_US";
+					}
+					
+					Locale locale = LocaleUtils.localeCodeToLocale(localeName);
+					String languageKey = locale != null ? locale.getLanguage() : "en";
+					if(!localeDescriptionMap.containsKey(languageKey)){
+						languageKey = "en";
+					}
+					
+					String messageContent = localeDescriptionMap.get(languageKey);
+					String body = room.getDescription() + ":\n" + messageContent;
+					
+					payloadBuilder.setAlertBody(body);
+				}
 				
-				// TODO: Use the right locale
-				String locale = "en";
-				
-				String messageContent = localeDescriptionMap.containsKey(locale) ? localeDescriptionMap.get(locale) : "";
-				String body = room.getDescription() + ":\n" + messageContent;
-				
-				payloadBuilder.setAlertBody(body);
-			}
-			
-			String payload = payloadBuilder.buildWithDefaultMaximumLength();
-			
-			for(String pushToken : pushTokens){
+				String payload = payloadBuilder.buildWithDefaultMaximumLength();
 				
 				try {
 					
-					byte[] token = TokenUtil.tokenStringToByteArray(pushToken);
+					byte[] token = TokenUtil.tokenStringToByteArray(device.getPushToken());
 					pushManager.getQueue().put(new SimpleApnsPushNotification(token, payload));
 				}
 				catch(Exception e){
 					
-					Log.error("Unable to send notification to " + pushToken, e);
+					Log.error("Unable to send notification to " + device.getPushToken(), e);
 				}
 			}
 		}

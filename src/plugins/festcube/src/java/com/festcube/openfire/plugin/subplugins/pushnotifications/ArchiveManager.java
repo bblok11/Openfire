@@ -26,26 +26,25 @@ import com.festcube.openfire.plugin.subplugins.pushnotifications.models.UserMobi
 
 public class ArchiveManager
 {
-	private static final String INSERT_UPDATE_MOBILE_DEVICE = "INSERT INTO ofUserMobileDevices(username, deviceIdentifier, devicePlatformId, deviceModel, pushToken, creationDate, modificationDate) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE deviceModel = VALUES(deviceModel), pushToken = VALUES(pushToken), modificationDate = VALUES(modificationDate)";
+	private static final String INSERT_UPDATE_MOBILE_DEVICE = "INSERT INTO ofUserMobileDevices(username, deviceIdentifier, devicePlatformId, deviceModel, pushToken, locale, creationDate, modificationDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE deviceModel = VALUES(deviceModel), pushToken = VALUES(pushToken), locale = VALUES(locale), modificationDate = VALUES(modificationDate)";
 	
 	private static final String DELETE_MOBILE_DEVICE = "DELETE FROM ofUserMobileDevices WHERE username=? AND deviceIdentifier=? AND devicePlatformId=?";
 
 	private static final String SELECT_MOBILE_DEVICES_FROM_USER = "SELECT * FROM ofUserMobileDevices WHERE username = ?";
 	private static final String SELECT_MOBILE_DEVICE_FROM_TOKEN = "SELECT * FROM ofUserMobileDevices WHERE devicePlatformId = ? AND pushToken = ? LIMIT 1";
-	private static final String SELECT_PUSH_TOKENS_FROM_USER = "SELECT pushToken FROM ofUserMobileDevices WHERE username = ? AND pushToken IS NOT NULL";
 	
 	private static final Log Log = CommonsLogFactory.getLog(ArchiveManager.class);
 	
-	Cache<String, ArrayList<String>> pushTokensCache;
+	Cache<String, ArrayList<UserMobileDevice>> userDevicesCache;
 	
 	
 	public ArchiveManager(){
 		
-		this.pushTokensCache = CacheFactory.createCache("User Devices push tokens");
-		this.pushTokensCache.setMaxLifetime(JiveConstants.HOUR);
+		this.userDevicesCache = CacheFactory.createCache("User Devices");
+		this.userDevicesCache.setMaxLifetime(JiveConstants.HOUR);
 	}
 	
-	public boolean updateDevice(String username, String deviceIdentifier, Integer devicePlatformId, String deviceModel, String pushToken)
+	public boolean updateDevice(String username, String deviceIdentifier, Integer devicePlatformId, String deviceModel, String pushToken, String locale)
 	{
 		PreparedStatement pstmt = null;
 		Connection con = getConnection();
@@ -60,8 +59,9 @@ public class ArchiveManager
 			pstmt.setInt(3, devicePlatformId.intValue());
 			pstmt.setString(4, deviceModel);
 			pstmt.setString(5, pushToken);
-			pstmt.setString(6, dateString);
+			pstmt.setString(6, locale);
 			pstmt.setString(7, dateString);
+			pstmt.setString(8, dateString);
 			
 			pstmt.execute();
 			
@@ -109,6 +109,10 @@ public class ArchiveManager
 	
 	public ArrayList<UserMobileDevice> getDevicesByUsername(String username)
 	{
+		if(this.userDevicesCache.containsKey(username)){
+			return this.userDevicesCache.get(username);
+		}
+		
 		ArrayList<UserMobileDevice> results = new ArrayList<UserMobileDevice>();
 			
 		Connection con = null;
@@ -129,6 +133,8 @@ public class ArchiveManager
 				UserMobileDevice device = new UserMobileDevice(rs);
 				results.add(device);
 			}
+			
+			this.userDevicesCache.put(username, results);
 		} 
 		catch (SQLException sqle) {
 			Log.error("Error selecting devices", sqle);
@@ -173,48 +179,9 @@ public class ArchiveManager
 		return null;
 	}
 	
-	public ArrayList<String> getPushTokensByUsername(String username)
-	{
-		if(pushTokensCache.containsKey(username)){
-			return pushTokensCache.get(username);
-		}
-		
-		ArrayList<String> results = new ArrayList<String>();
-			
-		Connection con = null;
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-		
-		try {
-			
-			con = DbConnectionManager.getConnection();
-
-			pstmt = con.prepareStatement(SELECT_PUSH_TOKENS_FROM_USER);
-			pstmt.setString(1, username);
-
-			rs = pstmt.executeQuery();
-
-			while (rs.next()) {
-				
-				String pushToken = rs.getString("pushToken");
-				results.add(pushToken);
-			}
-			
-			pushTokensCache.put(username, results);
-		} 
-		catch (SQLException sqle) {
-			Log.error("Error selecting push tokens", sqle);
-		} 
-		finally {
-			DbConnectionManager.closeConnection(rs, pstmt, con);
-		}
-		
-		return results;
-	}
-	
 	public void invalidateDevicesFromUsername(String username)
 	{
-		pushTokensCache.remove(username);
+		userDevicesCache.remove(username);
 	}
 	
 	

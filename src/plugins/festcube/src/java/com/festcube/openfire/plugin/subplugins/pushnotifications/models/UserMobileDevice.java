@@ -13,6 +13,7 @@ public class UserMobileDevice
 	private Integer devicePlatformId;
 	private String deviceModel;
 	private String pushToken;
+	private String locale;
 	
 	private Date creationDate;
 	private Date modificationDate;
@@ -24,6 +25,7 @@ public class UserMobileDevice
 		this.devicePlatformId = rs.getInt("devicePlatformId");
 		this.deviceModel = rs.getString("deviceModel");
 		this.pushToken = rs.getString("pushToken");
+		this.locale = rs.getString("locale");
 		
 		this.creationDate = new Date(Long.valueOf(rs.getString("creationDate")));
 		this.modificationDate = new Date(Long.valueOf(rs.getString("modificationDate")));
@@ -47,6 +49,10 @@ public class UserMobileDevice
 
 	public String getPushToken() {
 		return pushToken;
+	}
+	
+	public String getLocale() {
+		return locale;
 	}
 
 	public Date getCreationDate() {

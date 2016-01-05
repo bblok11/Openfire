@@ -43,6 +43,7 @@ public class IQUpdateDeviceHandler extends IQHandler {
 		String platformIdRaw = updateEl.elementTextTrim("platformId");
 		String model = updateEl.elementTextTrim("model");
 		String pushToken = updateEl.elementTextTrim("pushToken");
+		String locale = updateEl.elementTextTrim("locale");
 		
 		if(identifier == null || identifier.equals("") || platformIdRaw == null || platformIdRaw.equals("")){
 			throw new UnauthorizedException("No identifier or platform specified");
@@ -60,8 +61,8 @@ public class IQUpdateDeviceHandler extends IQHandler {
 		
 		String username = packet.getFrom().getNode();
 		
-		Log.info("Updating device " + identifier + " form user " + username);
-		archiveManager.updateDevice(username, identifier, platformId, model, pushToken);
+		Log.info("Updating device " + identifier + " from user " + username);
+		archiveManager.updateDevice(username, identifier, platformId, model, pushToken, locale);
 		
 		DbConnectionManager.closeConnection(dbConnection);
 		
