@@ -202,6 +202,10 @@ public class IQSendNotificationHandler extends IQHandler {
 		generatedNotification.addAttribute("id", idValue);
 		generatedNotification.addAttribute("type", typeValue);
 		
+		if(initiatingUserJID != null){
+			generatedNotification.addAttribute("initiator", initiatingUserJID.toBareJID());
+		}
+		
 		if(isSilent){
 			generatedNotification.addAttribute("silent", "silent");
 		}
@@ -259,16 +263,20 @@ public class IQSendNotificationHandler extends IQHandler {
 					if(room == null){
 						continue;
 					}
-					
-					// Find order
-					Long order = roomHistoryPlugin.consumeNextMessageOrder(jid);
+				
 					
 					// Send message in cube
 					Message newMessage = generatedMessage.createCopy();
 					newMessage.setTo(jid);
 					newMessage.setFrom(jid);
 					
-					newMessage.addChildElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(order.toString());
+					Long order = null;
+					
+					if(!isSilent){
+						
+						order = roomHistoryPlugin.consumeNextMessageOrder(jid);
+						newMessage.addChildElement("order", MUCHelper.NS_MESSAGE_ORDER).setText(order.toString());
+					}
 					
 					Element stampEl = newMessage.addChildElement("stamp", MUCHelper.NS_MESSAGE_STAMP);
 					stampEl.addText(XMPPDateTimeFormat.format(new Date()));
@@ -304,9 +312,9 @@ public class IQSendNotificationHandler extends IQHandler {
 								Log.error("Error during notification send for receipient " + member.toString(), e);
 							}
 						}
+						
+						cubeNotificationRecipients.add(new CubeNotificationRecipient(jid, order));
 					}
-					
-					cubeNotificationRecipients.add(new CubeNotificationRecipient(jid, order));
 				}
 			}
 			catch(Exception e){

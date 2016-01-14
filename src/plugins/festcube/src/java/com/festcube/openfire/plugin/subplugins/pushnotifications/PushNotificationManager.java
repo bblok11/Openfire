@@ -96,12 +96,18 @@ public class PushNotificationManager
 		boolean isNotification = message.getType() == Message.Type.headline && cubeNotificationEl != null;
 		
 		HashMap<String, String> localeDescriptionMap = new HashMap<String, String>();
+		JID initiator = null;
 		
 		if(isNotification){
 			
 			payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
 			payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
 			payloadBuilder.addCustomProperty(PUSH_KEY_TYPE, PUSH_KEY_TYPE_CUBENOTIFICATION);
+			
+			String initiatorString = cubeNotificationEl.attributeValue("initiator");
+			if(initiatorString != null){
+				initiator = new JID(initiatorString);
+			}
 			
 			Element descriptionsElement = cubeNotificationEl.element("descriptions");
 			
@@ -131,6 +137,10 @@ public class PushNotificationManager
 		
 		for(JID recipient : recipients){
 			
+			if(initiator != null && initiator.equals(recipient)){
+				continue;
+			}
+			
 			String recipientUsername = recipient.getNode();
 			ArrayList<UserMobileDevice> devices = archiveManager.getDevicesByUsername(recipientUsername);
 			
@@ -154,6 +164,10 @@ public class PushNotificationManager
 					}
 					
 					String messageContent = localeDescriptionMap.get(languageKey);
+					if(messageContent == null){
+						continue;
+					}
+					
 					String body = room.getDescription() + ":\n" + messageContent;
 					
 					payloadBuilder.setAlertBody(body);
