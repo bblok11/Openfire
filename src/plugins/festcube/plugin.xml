@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+    <class>com.festcube.openfire.plugin.FestcubePlugin</class>
+
+    <name>Festcube</name>
+    <description>Festcube</description>
+    <author>Festcube</author>
+    
+    <databaseKey>festcube</databaseKey>
+    <databaseVersion>1</databaseVersion>
+    
+
+    <version>1.0</version>
+    <date>14/08/2014</date>
+    <url>http://www.festcube.com</url>
+    <minServerVersion>3.0.0</minServerVersion>
+    <licenseType>internal</licenseType>
+
+</plugin>
