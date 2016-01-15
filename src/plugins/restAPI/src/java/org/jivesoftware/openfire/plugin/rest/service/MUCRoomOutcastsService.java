@@ -18,8 +18,10 @@ public class MUCRoomOutcastsService {
 	@POST
 	@Path("/{jid}")
 	public Response addMUCRoomOutcast(@DefaultValue("conference") @QueryParam("servicename") String serviceName,
-			@PathParam("jid") String jid, @PathParam("roomName") String roomName) throws ServiceException {
-		MUCRoomController.getInstance().addOutcast(serviceName, roomName, jid);
+			@PathParam("jid") String jid, 
+			@PathParam("roomName") String roomName,
+			@QueryParam("nickname") String nickname) throws ServiceException {
+		MUCRoomController.getInstance().addOutcast(serviceName, roomName, jid, nickname);
 		return Response.status(Status.CREATED).build();
 	}
 

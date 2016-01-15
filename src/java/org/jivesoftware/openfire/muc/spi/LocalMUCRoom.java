@@ -1054,10 +1054,12 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
         }
         // Send the message to all occupants
         message.setFrom(senderRole.getRoleAddress());
-        send(message);
+        
         // Fire event that message was received by the room
         MUCEventDispatcher.messageReceived(getRole().getRoleAddress(), senderRole.getUserAddress(),
                 senderRole.getNickname(), message);
+        
+        send(message);
     }
 
     @Override
