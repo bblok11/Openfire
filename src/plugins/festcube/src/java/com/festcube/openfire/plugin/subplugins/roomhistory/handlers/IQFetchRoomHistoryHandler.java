@@ -94,8 +94,9 @@ public class IQFetchRoomHistoryHandler extends IQHandler {
 					
 					Element mediaEl = messageEl.addElement("media", MUCHelper.NS_MESSAGE_MEDIA);
 					mediaEl.addAttribute("type", mediaMessage.getType().getStringValue());
-					mediaEl.addAttribute("src", mediaMessage.getUrl());
-					mediaEl.addAttribute("thumb", mediaMessage.getThumbUrl());
+					mediaEl.addAttribute("base", mediaMessage.getUrlBase());
+					mediaEl.addAttribute("filename", mediaMessage.getUrlFilename());
+					mediaEl.addAttribute("id", mediaMessage.getMediaId().toString());
 				}
 				else {
 					

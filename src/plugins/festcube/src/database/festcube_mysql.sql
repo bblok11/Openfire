@@ -22,8 +22,9 @@ CREATE TABLE ofRoomChatMediaHistory (
    `sentDate`          		BIGINT           NOT NULL,
    `order`					BIGINT			 NOT NULL,
    `typeId`              	TINYINT(1)	     NOT NULL,
-   `url`		         	VARCHAR(255)     NOT NULL,
-   `thumbUrl`		        VARCHAR(255)     NOT NULL,
+   `urlBase`		        VARCHAR(255)     NOT NULL,
+   `urlFilename`		    VARCHAR(255)     NOT NULL,
+   `mediaId`				BIGINT			 NOT NULL,
    
    PRIMARY KEY (`id`),
    INDEX ofRoomChatMediaHistory_room_indx (`roomJID`)

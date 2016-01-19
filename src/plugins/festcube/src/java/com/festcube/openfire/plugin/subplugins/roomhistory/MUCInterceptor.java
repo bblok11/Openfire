@@ -102,8 +102,19 @@ public class MUCInterceptor implements MUCEventListener {
 				
 				if(mediaElement != null){
 					
-					ArchivedChatMediaMessage.Type type = ArchivedChatMediaMessage.Type.fromString(mediaElement.attributeValue("type"));
-					archiveManager.processMessage(user, roomJID, date, order, type, mediaElement.attributeValue("src"), mediaElement.attributeValue("thumb"));
+					String typeString = mediaElement.attributeValue("type");
+					String mediaBase = mediaElement.attributeValue("base");
+					String mediaFilename = mediaElement.attributeValue("filename");
+					String mediaIdString = mediaElement.attributeValue("id");
+					
+					if(typeString == null || mediaBase == null || mediaFilename == null || mediaIdString == null){
+						return;
+					}
+					
+					ArchivedChatMediaMessage.Type type = ArchivedChatMediaMessage.Type.fromString(typeString);
+					Integer mediaId = Integer.valueOf(mediaIdString);
+					
+					archiveManager.processMessage(user, roomJID, date, order, type, mediaBase, mediaFilename, mediaId);
 				}
 			}
 		}
