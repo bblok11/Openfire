@@ -38,27 +38,27 @@ import com.festcube.openfire.plugin.xep0059.XmppResultSet;
 public class ArchiveManager 
 {
 	private static final String INSERT_CHAT_MESSAGE = "INSERT INTO ofRoomChatHistory(roomJID, nick, sentDate, `order`, body) VALUES (?,?,?,?,?)";
-	private static final String INSERT_CHAT_MEDIA_MESSAGE = "INSERT INTO ofRoomChatMediaHistory(roomJID, nick, sentDate, `order`, typeId, url, thumbUrl) VALUES (?,?,?,?,?,?,?)";
+	private static final String INSERT_CHAT_MEDIA_MESSAGE = "INSERT INTO ofRoomChatMediaHistory(roomJID, nick, sentDate, `order`, typeId, urlBase, urlFilename, mediaId) VALUES (?,?,?,?,?,?,?,?)";
 	private static final String INSERT_NOTIFICATION_MESSAGE = "INSERT INTO ofRoomNotificationHistory(sentDate, type, data, descriptions) VALUES (?,?,?,?)";
 	private static final String INSERT_NOTIFICATION_RECIPIENT = "INSERT INTO ofRoomNotificationHistoryRecipients(roomNotificationHistoryId, roomJID, `order`) VALUES (?, ?, ?)";
 	
 	private static final String SELECT_MESSAGES = ""
 			+ "("
-			+ "  SELECT id, sentDate, `order`, nick, body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, NULL notificationType, NULL notificationData, NULL notificationDescriptions "
+			+ "  SELECT id, sentDate, `order`, nick, body, NULL mediaTypeId, NULL mediaMediaId, NULL mediaUrlBase, NULL mediaUrlFilename, NULL notificationType, NULL notificationData, NULL notificationDescriptions "
 			+ "  FROM ofRoomChatHistory"
 			+ "  WHERE roomJID = ?"
 			+ "  %s"
 			+ ")"
 			+ "UNION"
 			+ "("
-			+ "  SELECT id, sentDate, `order`, nick, NULL body, typeId mediaTypeId, url mediaUrl, thumbUrl mediaThumbUrl, NULL notificationType, NULL notificationData, NULL notificationDescriptions "
+			+ "  SELECT id, sentDate, `order`, nick, NULL body, typeId mediaTypeId, mediaId mediaMediaId, urlBase mediaUrlBase, urlFilename mediaUrlFilename, NULL notificationType, NULL notificationData, NULL notificationDescriptions "
 			+ "  FROM ofRoomChatMediaHistory"
 			+ "  WHERE roomJID = ?"
 			+ "  %s"
 			+ ")"
 			+ "UNION"
 			+ "("
-			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, NULL mediaTypeId, NULL mediaUrl, NULL mediaThumbUrl, type notificationType, data notificationData, descriptions notificationDescriptions "
+			+ "  SELECT id, sentDate, `order`, NULL nick, NULL body, NULL mediaTypeId, NULL mediaMediaId, NULL mediaUrlBase, NULL mediaUrlFilename, type notificationType, data notificationData, descriptions notificationDescriptions "
 			+ "  FROM ofRoomNotificationHistory"
 			+ "  JOIN ofRoomNotificationHistoryRecipients ON ofRoomNotificationHistory.id = ofRoomNotificationHistoryRecipients.roomNotificationHistoryId"
 			+ "  WHERE ofRoomNotificationHistoryRecipients.roomJID = ?"
@@ -102,13 +102,13 @@ public class ArchiveManager
 		processMessage(message, receiver);
 	}
 	
-	public void processMessage(JID sender, JID receiver, Date date, Long order, ArchivedChatMediaMessage.Type type, String url, String thumbUrl){
+	public void processMessage(JID sender, JID receiver, Date date, Long order, ArchivedChatMediaMessage.Type type, String urlBase, String urlFilename, Integer mediaId){
 		
-		if(type == null || url == null || thumbUrl == null){
+		if(type == null || urlBase == null || urlFilename == null){
 			return;
 		}
 		
-		ArchivedChatMediaMessage message = new ArchivedChatMediaMessage(sender, receiver, date, order, type, url, thumbUrl);
+		ArchivedChatMediaMessage message = new ArchivedChatMediaMessage(sender, receiver, date, order, type, urlBase, urlFilename, mediaId);
 		
 		processMessage(message, receiver);
 	}
@@ -345,7 +345,7 @@ public class ArchiveManager
 				}
 				else {
 					
-					if(rs.getString("mediaUrl") != null){
+					if(rs.getString("mediaUrlFilename") != null){
 						message = new ArchivedChatMediaMessage(rs, roomJID);
 					}
 					else {
@@ -513,8 +513,9 @@ public class ArchiveManager
 									pstmtMediaMessage.setLong(3, chatMediaMessage.getSentDate().getTime());
 									pstmtMediaMessage.setLong(4, chatMediaMessage.getOrder());
 									pstmtMediaMessage.setInt(5, chatMediaMessage.getType().getIntValue());
-									pstmtMediaMessage.setString(6, chatMediaMessage.getUrl());
-									pstmtMediaMessage.setString(7, chatMediaMessage.getThumbUrl());
+									pstmtMediaMessage.setString(6, chatMediaMessage.getUrlBase());
+									pstmtMediaMessage.setString(7, chatMediaMessage.getUrlFilename());
+									pstmtMediaMessage.setLong(8, chatMediaMessage.getMediaId());
 									
 									if (DbConnectionManager.isBatchUpdatesSupported()) {
 										pstmtMediaMessage.addBatch();

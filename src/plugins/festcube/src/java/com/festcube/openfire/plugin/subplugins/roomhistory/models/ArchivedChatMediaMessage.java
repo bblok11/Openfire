@@ -45,16 +45,18 @@ public class ArchivedChatMediaMessage extends ArchivedChatMessage
 	}
 	
 	protected Type type;
-	protected String url;
-	protected String thumbUrl;
+	protected String urlBase;
+	protected String urlFilename;
+	protected Integer mediaId;
 	
-	public ArchivedChatMediaMessage(JID fromJID, JID roomJID, Date sentDate, Long order, Type type, String url, String thumbUrl) 
+	public ArchivedChatMediaMessage(JID fromJID, JID roomJID, Date sentDate, Long order, Type type, String urlBase, String urlFilename, Integer mediaId) 
 	{
 		super(fromJID, roomJID, sentDate, order, null);
 		
 		this.type = type;
-		this.url = url;
-		this.thumbUrl = thumbUrl;
+		this.urlBase = urlBase;
+		this.urlFilename = urlFilename;
+		this.mediaId = mediaId;
 	}
 	
 	public ArchivedChatMediaMessage(ResultSet rs, JID roomJID) throws SQLException{
@@ -62,19 +64,24 @@ public class ArchivedChatMediaMessage extends ArchivedChatMessage
     	super(rs, roomJID);
     	
     	this.type = Type.fromInteger(rs.getInt("mediaTypeId"));
-    	this.url = rs.getString("mediaUrl");
-    	this.thumbUrl = rs.getString("mediaThumbUrl");
+    	this.urlBase = rs.getString("mediaUrlBase");
+    	this.urlFilename = rs.getString("mediaUrlFilename");
+    	this.mediaId = rs.getInt("mediaMediaId");
     }
 
 	public Type getType() {
 		return type;
 	}
 
-	public String getUrl() {
-		return url;
+	public String getUrlBase() {
+		return urlBase;
 	}
 
-	public String getThumbUrl() {
-		return thumbUrl;
+	public String getUrlFilename() {
+		return urlFilename;
+	}
+	
+	public Integer getMediaId() {
+		return mediaId;
 	}
 }
