@@ -57,9 +57,15 @@ public class PushNotificationManager
 	private static final String PUSH_KEY_CUBE_JID = "cubeJid";
 	private static final String PUSH_KEY_USER_JID = "userJid";
 	private static final String PUSH_KEY_TYPE = "type";
+	private static final String PUSH_KEY_USER_NOTIFICATION_TYPE_ID = "userNotificationTypeId";
+	private static final String PUSH_KEY_USER_NOTIFICATION_ID = "userNotificationId";
+	private static final String PUSH_KEY_CUBE_NOTIFICATION_TYPE_ID = "cubeNotificationTypeId";
+	private static final String PUSH_KEY_CUBE_NOTIFICATION_ID = "cubeNotificationId";
+	private static final String PUSH_KEY_DATA = "data";
 	
 	private static final String PUSH_KEY_TYPE_MESSAGE = "message";
 	private static final String PUSH_KEY_TYPE_CUBENOTIFICATION = "cubenotification";
+	private static final String PUSH_KEY_TYPE_USERNOTIFICATION = "usernotification";
 	
 	
 	public PushNotificationManager(TaskEngine taskEngine, ArchiveManager archiveManager, String certificatePath, String certificatePassword, boolean debug) throws UnrecoverableKeyException, KeyManagementException, KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException
@@ -80,7 +86,7 @@ public class PushNotificationManager
 		pushManager.registerFailedConnectionListener(new FestcubeFailedConnectionListener());
 	}
 	
-	public void send(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients, HashMap<String, Integer> recipientsMissedMessages) {
+	public void sendRoom(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients, HashMap<String, Integer> recipientsMissedMessages) {
 		
 		// Build payload
 		String userName = "";
@@ -103,6 +109,15 @@ public class PushNotificationManager
 			payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
 			payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_JID, room.getJID().toBareJID());
 			payloadBuilder.addCustomProperty(PUSH_KEY_TYPE, PUSH_KEY_TYPE_CUBENOTIFICATION);
+			
+			int notificationType = Integer.parseInt(cubeNotificationEl.attributeValue("type"));
+			payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_NOTIFICATION_TYPE_ID, notificationType);
+			
+			int notificationId = Integer.parseInt(cubeNotificationEl.attributeValue("id"));
+			payloadBuilder.addCustomProperty(PUSH_KEY_CUBE_NOTIFICATION_ID, notificationId);
+			
+			Element dataElement = cubeNotificationEl.element("data");
+			payloadBuilder.addCustomProperty(PUSH_KEY_DATA, dataElement.getTextTrim());
 			
 			String initiatorString = cubeNotificationEl.attributeValue("initiator");
 			if(initiatorString != null){
@@ -152,13 +167,7 @@ public class PushNotificationManager
 				if(isNotification){
 					
 					// Set body with the appropriate locale
-					String localeName = device.getLocale();
-					if(localeName == null){
-						localeName = "en_US";
-					}
-					
-					Locale locale = LocaleUtils.localeCodeToLocale(localeName);
-					String languageKey = locale != null ? locale.getLanguage() : "en";
+					String languageKey = getDeviceLanguageKey(device);
 					if(!localeDescriptionMap.containsKey(languageKey)){
 						languageKey = "en";
 					}
@@ -187,6 +196,87 @@ public class PushNotificationManager
 			}
 		}
 	}
+	
+	public void sendUser(JID senderJID, Message message, ArrayList<JID> recipients) {
+		
+		// Build payload
+		final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
+		
+		Element userNotificationEl = message.getChildElement("usernotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
+		boolean isNotification = message.getType() == Message.Type.headline && userNotificationEl != null;
+		
+		HashMap<String, String> localeDescriptionMap = new HashMap<String, String>();
+		
+		if(isNotification){
+			
+			payloadBuilder.setSoundFileName(ApnsPayloadBuilder.DEFAULT_SOUND_FILENAME);
+			payloadBuilder.addCustomProperty(PUSH_KEY_TYPE, PUSH_KEY_TYPE_USERNOTIFICATION);
+			
+			int typeId = Integer.parseInt(userNotificationEl.attributeValue("type"));
+			payloadBuilder.addCustomProperty(PUSH_KEY_USER_NOTIFICATION_TYPE_ID, typeId);
+			
+			int notificationId = Integer.parseInt(userNotificationEl.attributeValue("id"));
+			payloadBuilder.addCustomProperty(PUSH_KEY_USER_NOTIFICATION_ID, notificationId);
+			
+			Element dataElement = userNotificationEl.element("data");
+			payloadBuilder.addCustomProperty(PUSH_KEY_DATA, dataElement.getTextTrim());
+			
+			Element descriptionsElement = userNotificationEl.element("descriptions");
+			
+			if(descriptionsElement != null){
+				
+				@SuppressWarnings("unchecked")
+				List<Element> descriptionElements = descriptionsElement.elements("description");
+					
+				for(Element descriptionEl : descriptionElements){
+					localeDescriptionMap.put(descriptionEl.attributeValue("locale"), descriptionEl.getTextTrim());
+				}
+			}
+		}
+		else {
+			
+			// No support for direct messages yet
+			return;
+		}
+		
+		for(JID recipient : recipients){
+			
+			String recipientUsername = recipient.getNode();
+			ArrayList<UserMobileDevice> devices = archiveManager.getDevicesByUsername(recipientUsername);
+			
+			for(UserMobileDevice device : devices){
+				
+				if(isNotification){
+					
+					// Set body with the appropriate locale
+					String languageKey = getDeviceLanguageKey(device);
+					if(!localeDescriptionMap.containsKey(languageKey)){
+						languageKey = "en";
+					}
+					
+					String messageContent = localeDescriptionMap.get(languageKey);
+					if(messageContent == null){
+						continue;
+					}
+					
+					payloadBuilder.setAlertBody(messageContent);
+				}
+				
+				String payload = payloadBuilder.buildWithDefaultMaximumLength();
+				
+				try {
+					
+					byte[] token = TokenUtil.tokenStringToByteArray(device.getPushToken());
+					pushManager.getQueue().put(new SimpleApnsPushNotification(token, payload));
+				}
+				catch(Exception e){
+					
+					Log.error("Unable to send notification to " + device.getPushToken(), e);
+				}
+			}
+		}
+	}
+
 	
 	public void start(){
 		
@@ -240,6 +330,17 @@ public class PushNotificationManager
 				"Push alert", 
 				body, 
 				body);
+	}
+	
+	private String getDeviceLanguageKey(UserMobileDevice device)
+	{
+		String localeName = device.getLocale();
+		if(localeName == null){
+			localeName = "en_US";
+		}
+		
+		Locale locale = LocaleUtils.localeCodeToLocale(localeName);
+		return locale != null ? locale.getLanguage() : "en";
 	}
 	
 	

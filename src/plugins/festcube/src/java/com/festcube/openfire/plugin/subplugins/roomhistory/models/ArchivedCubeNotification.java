@@ -7,13 +7,15 @@ import java.util.Date;
 abstract public class ArchivedCubeNotification extends ArchivedMessage
 {
 	protected int type;
+	protected int notificationId;
 	protected String data;
 	protected String descriptions;
 	
-	public ArchivedCubeNotification(Date sentDate, int type, String data, String descriptions) {
+	public ArchivedCubeNotification(Date sentDate, int type, int notificationId, String data, String descriptions) {
 		
 		this.sentDate = sentDate;
 		this.type = type;
+		this.notificationId = notificationId;
 		this.data = data;
 		this.descriptions = descriptions;
     }
@@ -23,6 +25,7 @@ abstract public class ArchivedCubeNotification extends ArchivedMessage
     	this.id = rs.getLong("id");
     	this.sentDate = new Date(rs.getLong("sentDate"));
     	this.type = rs.getInt("notificationType");
+    	this.notificationId = rs.getInt("notificationId");
     	this.data = rs.getString("notificationData");
     	this.descriptions = rs.getString("notificationDescriptions");
     }
@@ -33,6 +36,10 @@ abstract public class ArchivedCubeNotification extends ArchivedMessage
 
 	public int getType() {
 		return type;
+	}
+	
+	public int getNotificationId() {
+		return notificationId;
 	}
 
 	public String getData() {

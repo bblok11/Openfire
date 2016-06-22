@@ -29,7 +29,7 @@ public class FestcubePlugin implements Plugin
 		roomHistory = new RoomHistorySubPlugin();
 		pushNotifications = new PushNotificationsSubPlugin();
 		awayHandler = new AwayHandlerSubPlugin(pushNotifications);
-		notificationBroadcaster = new NotificationBroadcasterSubPlugin(roomHistory);
+		notificationBroadcaster = new NotificationBroadcasterSubPlugin(roomHistory, pushNotifications);
 		
 		roomHistory.initialize();
 		awayHandler.initialize();

@@ -222,7 +222,7 @@ public class MUCInterceptor implements MUCEventListener
 			
 			// Send push notifications
 			HashMap<String, Integer> awayJIDsMissedMessages = archiveManager.getMissedMessagesByNicks(awayNicknames);
-			pushNotifications.sendNotifications(room, senderJID, message, awayJIDs, awayJIDsMissedMessages);
+			pushNotifications.sendRoomNotifications(room, senderJID, message, awayJIDs, awayJIDsMissedMessages);
 		}
 	}
 }

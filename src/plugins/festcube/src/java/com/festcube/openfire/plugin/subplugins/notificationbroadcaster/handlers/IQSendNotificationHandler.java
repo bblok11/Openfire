@@ -27,6 +27,7 @@ import org.xmpp.packet.Message.Type;
 
 import com.festcube.openfire.plugin.MUCHelper;
 import com.festcube.openfire.plugin.models.CubeNotificationRecipient;
+import com.festcube.openfire.plugin.subplugins.pushnotifications.PushNotificationsSubPlugin;
 import com.festcube.openfire.plugin.subplugins.roomhistory.RoomHistorySubPlugin;
 
 
@@ -37,15 +38,18 @@ public class IQSendNotificationHandler extends IQHandler {
 	private final JID fromJid;
 	
 	private RoomHistorySubPlugin roomHistoryPlugin;
+	private PushNotificationsSubPlugin pushNotificationsPlugin;
 	
 	private final ArrayList<JID> allowedUsers;
 	
 	
-	public IQSendNotificationHandler(RoomHistorySubPlugin roomHistory) {
+	public IQSendNotificationHandler(RoomHistorySubPlugin roomHistory, PushNotificationsSubPlugin pushNotifications) {
 		
 		super("Notification broadcaster");
 		
 		this.roomHistoryPlugin = roomHistory;
+		this.pushNotificationsPlugin = pushNotifications;
+		
 		this.info = new IQHandlerInfo("send", MUCHelper.NS_IQ_SEND_NOTIFICATIONS);
 		this.fromJid = new JID(XMPPServer.getInstance().getServerInfo().getXMPPDomain());
 		
@@ -112,6 +116,9 @@ public class IQSendNotificationHandler extends IQHandler {
 		Element idEl = notificationEl.element("id");
 		Element typeEl = notificationEl.element("type");
 		Element recipientsEl = notificationEl.element("recipients");
+		Element silentEl = notificationEl.element("silent");
+		Element dataEl = notificationEl.element("data");
+		Element descriptionsEl = notificationEl.element("descriptions");
 		
 		if(idEl == null || typeEl == null || recipientsEl == null){
 			return;
@@ -119,6 +126,8 @@ public class IQSendNotificationHandler extends IQHandler {
 		
 		String idValue = idEl.getTextTrim();
 		String typeValue = typeEl.getTextTrim();
+		String dataValue = dataEl.getTextTrim();
+		boolean isSilent = silentEl != null;
 		
 		@SuppressWarnings("unchecked")
 		List<Element> recipients = recipientsEl.elements("jid");
@@ -133,6 +142,39 @@ public class IQSendNotificationHandler extends IQHandler {
 		Element generatedNotification = generatedMessage.addChildElement("usernotification", MUCHelper.NS_MESSAGE_NOTIFICATION);
 		generatedNotification.addAttribute("id", idValue);
 		generatedNotification.addAttribute("type", typeValue);
+		
+		if(isSilent){
+			generatedNotification.addAttribute("silent", "silent");
+		}
+		
+		// Add data
+		Element generatedNotificationDataEl = generatedNotification.addElement("data");
+		generatedNotificationDataEl.setText(dataValue);
+		
+		// Add descriptions
+		HashMap<String, String> descriptions = new HashMap<>();
+		
+		if(descriptionsEl != null){
+			
+			@SuppressWarnings("unchecked")
+			List<Element> descriptionElements = descriptionsEl.elements("description");
+			
+			Element generatedNotificationDescriptionsEl = generatedNotification.addElement("descriptions");
+			
+			for(Element descriptionEl : descriptionElements){
+				
+				String locale = descriptionEl.attributeValue("locale");
+				String description = descriptionEl.getTextTrim();
+				
+				Element currentDescriptionEl = generatedNotificationDescriptionsEl.addElement("description");
+				currentDescriptionEl.addAttribute("locale", locale);
+				currentDescriptionEl.setText(description);
+				
+				descriptions.put(locale, description);
+			}
+		}
+		
+		ArrayList<JID> recipientJIDs = new ArrayList<>();
 		
 		for(Element recipientEl : recipients){
 			
@@ -150,12 +192,17 @@ public class IQSendNotificationHandler extends IQHandler {
 					newMessage.setTo(jid);
 					
 					messageRouter.route(newMessage);
+					
+					recipientJIDs.add(jid);
 				}
 			}
 			catch(Exception e){
 				// Ignore
 			}
 		}
+		
+		// Send push notifications
+		pushNotificationsPlugin.sendUserNotifications(fromJid, generatedMessage, recipientJIDs);
 	}
 	
 	private void sendCubeNotification(Element notificationEl)
@@ -326,7 +373,7 @@ public class IQSendNotificationHandler extends IQHandler {
 		// Report to room history
 		if(!isSilent){
 			
-			roomHistoryPlugin.reportRoomNotification(Integer.valueOf(typeValue), dataValue, descriptions, cubeNotificationRecipients);
+			roomHistoryPlugin.reportRoomNotification(Integer.valueOf(typeValue), Integer.valueOf(idValue), dataValue, descriptions, cubeNotificationRecipients);
 		}
 	}
 

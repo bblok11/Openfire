@@ -33,6 +33,7 @@ CREATE TABLE ofRoomChatMediaHistory (
 CREATE TABLE `ofRoomNotificationHistory` (
    `id`    			 		BIGINT unsigned  NOT NULL AUTO_INCREMENT,
    `sentDate`          		BIGINT           NOT NULL,
+   `notificationId`			BIGINT,
    `type` 					INT,
    `data`					TEXT COLLATE utf8mb4_unicode_ci,
    `descriptions`			TEXT COLLATE utf8mb4_unicode_ci,

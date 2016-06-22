@@ -47,9 +47,9 @@ public class RoomHistorySubPlugin implements ISubPlugin {
     	archiveManager.stop();
     }
     
-    public void reportRoomNotification(int type, String data, Map<String, String> descriptions, ArrayList<CubeNotificationRecipient> recipients)
+    public void reportRoomNotification(int type, int notificationId, String data, Map<String, String> descriptions, ArrayList<CubeNotificationRecipient> recipients)
     {
-    	archiveManager.processNotification(new Date(), type, data, descriptions, recipients);
+    	archiveManager.processNotification(new Date(), type, notificationId, data, descriptions, recipients);
     }
     
     public Long consumeNextMessageOrder(JID roomJID)

@@ -68,10 +68,17 @@ public class PushNotificationsSubPlugin implements ISubPlugin {
 	}
 	
 	
-	public void sendNotifications(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients, HashMap<String, Integer> recipientsMissedMessages){
+	public void sendRoomNotifications(MUCRoom room, JID senderJID, Message message, ArrayList<JID> recipients, HashMap<String, Integer> recipientsMissedMessages){
 		
 		if(pushManager != null && recipients.size() > 0){
-			pushManager.send(room, senderJID, message, recipients, recipientsMissedMessages);
+			pushManager.sendRoom(room, senderJID, message, recipients, recipientsMissedMessages);
+		}
+	}
+	
+	public void sendUserNotifications(JID senderJID, Message message, ArrayList<JID> recipients){
+		
+		if(pushManager != null && recipients.size() > 0){
+			pushManager.sendUser(senderJID, message, recipients);
 		}
 	}
 }

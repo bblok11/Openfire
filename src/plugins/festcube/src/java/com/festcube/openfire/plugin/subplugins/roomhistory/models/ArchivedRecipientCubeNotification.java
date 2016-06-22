@@ -11,9 +11,9 @@ public class ArchivedRecipientCubeNotification extends ArchivedCubeNotification 
 	protected JID roomJID;
 	protected Long order;
 	
-	public ArchivedRecipientCubeNotification(JID roomJID, Date sentDate, int type, String data, String descriptions, Long order) {
+	public ArchivedRecipientCubeNotification(JID roomJID, Date sentDate, int type, int notificationId, String data, String descriptions, Long order) {
 		
-		super(sentDate, type, data, descriptions);
+		super(sentDate, type, notificationId, data, descriptions);
 		
 		this.roomJID = roomJID;
 		this.order = order;

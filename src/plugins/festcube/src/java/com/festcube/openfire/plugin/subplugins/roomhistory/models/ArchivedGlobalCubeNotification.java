@@ -9,9 +9,9 @@ public class ArchivedGlobalCubeNotification extends ArchivedCubeNotification
 {
 	protected ArrayList<CubeNotificationRecipient> recipients;
 	
-	public ArchivedGlobalCubeNotification(Date sentDate, int type, String data, String descriptions, ArrayList<CubeNotificationRecipient> recipients) {
+	public ArchivedGlobalCubeNotification(Date sentDate, int type, int notificationId, String data, String descriptions, ArrayList<CubeNotificationRecipient> recipients) {
 		
-		super(sentDate, type, data, descriptions);
+		super(sentDate, type, notificationId, data, descriptions);
 		
 		if(recipients == null){
 			recipients = new ArrayList<CubeNotificationRecipient>();
@@ -22,7 +22,7 @@ public class ArchivedGlobalCubeNotification extends ArchivedCubeNotification
 	
 	public ArchivedRecipientCubeNotification getRecipientNotification(CubeNotificationRecipient recipient){
 		
-		return new ArchivedRecipientCubeNotification(recipient.getJid(), this.sentDate, this.type, this.data, this.descriptions, recipient.getOrder());
+		return new ArchivedRecipientCubeNotification(recipient.getJid(), this.sentDate, this.type, this.notificationId, this.data, this.descriptions, recipient.getOrder());
 	}
 	
 	public ArrayList<CubeNotificationRecipient> getRecipients(){
