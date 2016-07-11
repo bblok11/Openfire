@@ -137,7 +137,7 @@ public class MUCRoomController {
 	 */
 	public void createChatRoom(String serviceName, MUCRoomEntity mucRoomEntity) throws ServiceException {
 		try {
-			createRoom(mucRoomEntity, serviceName);
+			createRoom(mucRoomEntity, serviceName, true);
 		} catch (NotAllowedException e) {
 			throw new ServiceException("Could not create the channel", mucRoomEntity.getRoomName(),
 					ExceptionType.NOT_ALLOWED, Response.Status.FORBIDDEN, e);
@@ -174,7 +174,10 @@ public class MUCRoomController {
 						"Could not update the channel. The room name is different to the entity room name.", roomName,
 						ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
 			}
-			createRoom(mucRoomEntity, serviceName);
+			
+			// FIX: FESTCUBE: Don't re-add the roles, nickname gets lost. Only use update-method to change room properties, not roles
+			createRoom(mucRoomEntity, serviceName, false);
+			
 		} catch (NotAllowedException e) {
 			throw new ServiceException("Could not update the channel", roomName, ExceptionType.NOT_ALLOWED, Response.Status.FORBIDDEN, e);
 		} catch (ForbiddenException e) {
@@ -202,7 +205,7 @@ public class MUCRoomController {
 	 *             the conflict exception
 	 * @throws AlreadyExistsException 
 	 */
-	private void createRoom(MUCRoomEntity mucRoomEntity, String serviceName) throws NotAllowedException,
+	private void createRoom(MUCRoomEntity mucRoomEntity, String serviceName, boolean resetRoles) throws NotAllowedException,
 			ForbiddenException, ConflictException, AlreadyExistsException {
 
 		// Set owner
@@ -254,8 +257,11 @@ public class MUCRoomController {
 		} else {
 			room.setRolesToBroadcastPresence(new ArrayList<String>());
 		}
-		// Set all roles
-		setRoles(room, mucRoomEntity);
+		
+		if(resetRoles){
+			// Set all roles
+			setRoles(room, mucRoomEntity);
+		}
 
 		// Set creation date
 		if (mucRoomEntity.getCreationDate() != null) {
